@@ -1,0 +1,213 @@
+# Discogs API Client
+
+This is the official Discogs API client for Python. You can use it to query the
+Discogs music database for metadata on artists, releases, and more.
+
+## Installation
+
+Install the client from PyPI using your favorite package manager.
+
+    $ pip install discogs-client
+
+## Usage
+
+### Setup
+
+    >>> import discogs_client as discogs
+
+You also need to set the User-Agent of your client before you can make requests.
+
+    >>> discogs.user_agent = 'My Test Client'
+
+### Getting data
+
+There are five classes you can use to fetch data from the API:
+
+ * `Artist`
+ * `Release`
+ * `MasterRelease`
+ * `Label`
+ * and `Search`.
+
+Whereever possible, the Discogs client tries to convert API responses into these
+objects. This enables you to drill down into the object graph as far as you
+like.
+
+For example, `Artist`s have two convenience properties -- `aliases` and
+`releases` -- which return `Artist` and `Release` objects. To get at the
+remainder of an object's metadata, use the `data` dictionary, which contains the
+raw information received from the API.
+
+    >>> discogs.Artist('Aphex Twin').data['realname']
+    u'...'
+
+## Artist
+    
+Query for an artist using the artist's name:
+
+    >>> artist = discogs.Artist('Aphex Twin')
+    >>> print artist
+    <Artist "...">
+    >>> 'name' in artist.data.keys()
+    True
+
+### Special properties
+
+Get a list of `Artist`s representing this artist's aliases:
+
+    >>> artist.aliases
+    [...]
+
+Get a list of `Release`s by this artist:
+
+    >>> artist.releases
+    [...]
+
+### Possible `data` keys
+
+* images
+* members
+* name
+* namevariations
+* realname
+* urls
+
+## Release
+
+Query for a release using its Discogs ID:
+
+    >>> release = discogs.Release(1)
+    
+### Special properties
+
+Get the title of this `Release`:
+
+    >>> release.title
+    u'...'
+
+Get a list of all `Artist`s associated with this `Release`:
+
+    >>> release.artists
+    [<Artist "...">]
+
+Get the tracklist for this `Release`:
+
+    >>> release.tracklist
+    [...]
+
+Get the `MasterRelease` for this `Release`:
+
+    >>> release.master
+    <MasterRelease "...">
+
+Get a list of all `Label`s for this `Release`:
+
+    >>> release.labels
+    [...]
+
+### Possible `data` keys
+
+* country
+* formats
+* genres
+* id
+* images
+* notes
+* released_formatted
+* released
+* status
+* styles
+* year
+
+## MasterRelease
+
+Query for a master release using its Discogs ID:
+
+    >>> master_release = discogs.MasterRelease(5427)
+
+### Special properties
+
+Get the key `Release` for this `MasterRelease`:
+
+    >>> master_release.key_release
+    <Release "...">
+
+Get the title of this `MasterRelease`:
+
+    >>> master_release.title
+    u'...'
+    >>> master_release.title == master_release.key_release.title
+    True
+
+Get a list of all `Artist`s associated with this `MasterRelease`:
+
+    >>> master_release.artists
+    [<Artist "...">]
+
+Get a list of `Release`s representing other versions of this `MasterRelease`:
+
+    >>> master_release.versions
+    [...]
+
+Get the tracklist for this `MasterRelease`:
+
+    >>> master_release.tracklist
+    [...]
+
+### Possible `data` keys
+
+ * genres
+ * id
+ * images
+ * styles
+ * year
+
+## Label
+
+Query for a label using the label's name:
+
+    >>> label = discogs.Label('Warp Records')
+
+### Special properties
+
+Get a list of `Release`s from this `Label`:
+
+    >>> label.releases
+    [...]
+
+Get a list of `Label`s representing sublabels associated with this `Label`:
+
+    >>> label.sublabels
+    [...]
+
+Get the `Label`'s parent label, if it exists:
+
+    >>> label.parent_label
+    ...
+
+### Possible `data` keys
+
+* contactinfo
+* images
+* name
+* profile
+* urls
+
+## Search
+
+To search the database, pass your query into a `Search`:
+
+    >>> s = discogs.Search('autechre')
+
+There may be results that exactly match your query:
+
+    >>> s.exactresults
+    [...]
+    
+Any other results are paginated:
+
+    >>> s.results()
+    [...]
+    >>> s.results(page=2)
+    [...]
+

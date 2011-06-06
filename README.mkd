@@ -17,7 +17,7 @@ Install the client from PyPI using your favorite package manager.
 
 You also need to set the User-Agent of your client before you can make requests.
 
-    >>> discogs.user_agent = 'My Test Client'
+    >>> discogs.user_agent = 'MyDiscogsClient/1.0 +http://mydiscogsclient.org'
 
 ### Getting data
 

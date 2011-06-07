@@ -6,11 +6,11 @@ setup(
         name='discogs-client',
         version='0.1',
         description='Official Python API client for Discogs',
-        url='https://github.com/discogs/discogs-python-api-client',
+        url='https://github.com/discogs/discogs-python-client',
         author='Discogs',
         author_email='info@discogs.com',
         classifiers=[
-            'Development Status :: 4 - Beta',
+            'Development Status :: 5 - Production/Stable',
             'Environment :: Console',
             'License :: OSI Approved :: BSD License',
             'Natural Language :: English',

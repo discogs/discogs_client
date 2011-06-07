@@ -15,8 +15,10 @@ Install the client from PyPI using your favorite package manager.
 
     >>> import discogs_client as discogs
 
-You also need to set the User-Agent of your client before you can make requests.
+You also need to set the User-Agent of your client to something unique before you can make requests -- preferably something that follows [RFC 1945](http://tools.ietf.org/html/rfc1945#section-3.7). **Don't just use one of these examples!** Make it your own; this will help us get in touch with you if your client is behaving incorrectly.
 
+    >>> discogs.user_agent = 'AwesomeDiscogsBrowser/0.1 +http://adb.example.com'
+    >>> discogs.user_agent = 'LibraryMetadataEnhancer/0.3 +http://example.com/lime'
     >>> discogs.user_agent = 'MyDiscogsClient/1.0 +http://mydiscogsclient.org'
 
 ### Getting data

@@ -73,6 +73,16 @@ def _parse_credits(extraartists):
         _credits[role].append(artist_or_anv)
     return _credits
 
+def _class_from_string(api_string):
+    class_map = {
+            'master': MasterRelease,
+            'release': Release,
+            'artist': Artist,
+            'label': Label
+    }
+
+    return class_map[api_string]
+
 class Artist(APIBase):
     def __init__(self, name, anv=False):
         self._id = name
@@ -104,7 +114,7 @@ class Artist(APIBase):
             self._clear_cache()
 
             for r in self.data.get('releases', []):
-                self._releases.append(Release(r['id']))
+                self._releases.append(_class_from_string(r['type'])(r['id']))
         return self._releases
 
 class Release(APIBase):
@@ -241,13 +251,6 @@ class Label(APIBase):
         #return [Release(r.get('id') for r in self.data.get('releases')]
 
 class Search(APIBase):
-    klass_map = {
-            'master': MasterRelease,
-            'release': Release,
-            'artist': Artist,
-            'label': Label
-    }
-
     def __init__(self, query, page=1):
         self._id = query
         self._results = {}
@@ -265,7 +268,7 @@ class Search(APIBase):
             id = result['uri'].split('/')[-1]
         else:
             id = result['title']
-        return self.klass_map[result['type']](id)
+        return _class_from_string(result['type'])(id)
 
     @property
     def _uri(self):

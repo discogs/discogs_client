@@ -16,6 +16,9 @@ class APIBase(object):
         self._params = {}
         self._headers = { 'accept-encoding': 'gzip, deflate' }
 
+    def __str__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self._id)
+
     def __repr__(self):
         return self.__str__().encode('utf-8')
 
@@ -93,10 +96,7 @@ class Artist(APIBase):
         APIBase.__init__(self)
 
     def __str__(self):
-        if self._anv:
-            return '<Artist "%s*">' % self._id
-        else:
-            return '<Artist "%s">' % self._id
+        return '<%s "%s%s">' % (self.__class__.__name__, self._id, '*' if self._anv else '')
 
     @property
     def aliases(self):
@@ -126,9 +126,6 @@ class Release(APIBase):
         self._credits = None
         self._tracklist = []
         APIBase.__init__(self)
-
-    def __str__(self):
-        return '<Release "%s">' % self._id
 
     @property
     def artists(self):
@@ -183,9 +180,6 @@ class MasterRelease(APIBase):
         self._artists = []
         APIBase.__init__(self)
 
-    def __str__(self):
-        return '<MasterRelease "%s">' % self._id
-
     # Override class name introspection in BaseAPI since it would otherwise return "masterrelease"
     @property
     def _uri_name(self):
@@ -226,9 +220,6 @@ class Label(APIBase):
         self._parent_label = None
         APIBase.__init__(self)
 
-    def __str__(self):
-        return '<Label "%s">' % self._id
-
     @property
     def sublabels(self):
         if not self._sublabels:
@@ -247,8 +238,6 @@ class Label(APIBase):
         self._params.update({'releases': '1'})
         self._clear_cache()
         return self.data.get('releases')
-        # TODO: Implement fetch many release IDs
-        #return [Release(r.get('id') for r in self.data.get('releases')]
 
 class Search(APIBase):
     def __init__(self, query, page=1):
@@ -259,9 +248,6 @@ class Search(APIBase):
         APIBase.__init__(self)
         self._params['q'] = self._id
         self._params['page'] = self._page
-
-    def __str__(self):
-        return '<Search "%s">' % self._id
 
     def _to_object(self, result):
         if result['type'] in ['master', 'release']:

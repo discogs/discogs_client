@@ -153,19 +153,20 @@ class Release(APIBase):
 
     @property
     def tracklist(self):
-        for track in self.data.get('tracklist', []):
-            artists = []
-            track['extraartists'] = _parse_credits(track.get('extraartists', []))
+        if not self._tracklist:
+            for track in self.data.get('tracklist', []):
+                artists = []
+                track['extraartists'] = _parse_credits(track.get('extraartists', []))
 
-            for artist in track.get('artists', []):
-                artists.append(Artist(artist['anv'] or artist['name'], anv=artist['anv']))
+                for artist in track.get('artists', []):
+                    artists.append(Artist(artist['anv'] or artist['name'], anv=artist['anv']))
 
-                if artist['join']:
-                    artists.append(artist['join'])
-            track['artists'] = artists
-            track['type'] = 'Track' if track['position'] else 'Index Track'
+                    if artist['join']:
+                        artists.append(artist['join'])
+                track['artists'] = artists
+                track['type'] = 'Track' if track['position'] else 'Index Track'
 
-            self._tracklist.append(track)
+                self._tracklist.append(track)
         return self._tracklist
 
     @property

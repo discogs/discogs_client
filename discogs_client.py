@@ -272,6 +272,9 @@ class Search(APIBase):
 
     @property
     def exactresults(self):
+        if not self.data:
+            return []
+
         if not self._exactresults:
             for result in self.data.get('exactresults', []):
                 self._exactresults.append(self._to_object(result))
@@ -286,6 +289,9 @@ class Search(APIBase):
             self._params['page'] = page
             self._clear_cache()
 
+        if not self.data:
+            return []
+
         if page_key not in self._results:
             self._results[page_key] = []
             for result in self.data['searchresults']['results']:
@@ -294,5 +300,13 @@ class Search(APIBase):
         return self._results[page_key]
 
     @property
+    def numresults(self):
+        if not self.data:
+            return 0
+        return int(self.data['searchresults'].get('numResults', 0))
+
+    @property
     def pages(self):
-        return ((int(self.data['searchresults']['numResults'])) / 20) + 1
+        if not self.data:
+            return 0
+        return (self.numresults / 20) + 1

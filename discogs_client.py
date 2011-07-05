@@ -68,12 +68,12 @@ def _parse_credits(extraartists):
         role = artist.get('role')
         tracks = artist.get('tracks')
 
-        artist_or_anv = {'artists': Artist(artist['anv'] or artist['name'], anv=artist['anv'])}
+        artist_dict = {'artists': Artist(artist['name'], anv=artist.get('anv'))}
 
         if tracks:
-            artist_or_anv['tracks'] = tracks
+            artist_dict['tracks'] = tracks
 
-        _credits[role].append(artist_or_anv)
+        _credits[role].append(artist_dict)
     return _credits
 
 def _class_from_string(api_string):
@@ -87,16 +87,24 @@ def _class_from_string(api_string):
     return class_map[api_string]
 
 class Artist(APIBase):
-    def __init__(self, name, anv=False):
+    def __init__(self, name, anv=None):
         self._id = name
         self._aliases = []
         self._namevariations = []
         self._releases = []
-        self._anv = anv
+        self._anv = anv or None
         APIBase.__init__(self)
 
     def __str__(self):
-        return '<%s "%s%s">' % (self.__class__.__name__, self._id, '*' if self._anv else '')
+        return '<%s "%s">' % (self.__class__.__name__, self._anv + '*' if self._anv else self._id)
+
+    @property
+    def name(self):
+        return self._id
+
+    @property
+    def anv(self):
+        return self._anv
 
     @property
     def aliases(self):
@@ -159,7 +167,7 @@ class Release(APIBase):
                 track['extraartists'] = _parse_credits(track.get('extraartists', []))
 
                 for artist in track.get('artists', []):
-                    artists.append(Artist(artist['anv'] or artist['name'], anv=artist['anv']))
+                    artists.append(Artist(artist['name'], anv=artist.get('anv')))
 
                     if artist['join']:
                         artists.append(artist['join'])
@@ -251,10 +259,11 @@ class Search(APIBase):
         self._params['page'] = self._page
 
     def _to_object(self, result):
-        if result['type'] in ['master', 'release']:
+        id = result['title']
+        if result['type'] in ('master', 'release'):
             id = result['uri'].split('/')[-1]
-        else:
-            id = result['title']
+        elif result['type'] == 'artist':
+            return Artist(id, anv=result.get('anv'))
         return _class_from_string(result['type'])(id)
 
     @property

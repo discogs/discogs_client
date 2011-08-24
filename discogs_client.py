@@ -35,7 +35,7 @@ class APIBase(object):
         if not self._cached_response:
             if not self._check_user_agent():
                 raise DiscogsAPIError, 'Invalid or no User-Agent set'
-            self._cached_response = requests.get(self._uri, self._params, self._headers)
+            self._cached_response = requests.get(self._uri, params=self._params, headers=self._headers)
 
         return self._cached_response
 

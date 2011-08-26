@@ -45,7 +45,7 @@ class APIBase(object):
 
     @property
     def _uri(self):
-        return '%s/%s/%s' % (api_uri, self._uri_name, urllib.quote_plus(unicode(self._id).encode('utf-8')))
+        return '%s/%s/%s' % (api_uri, self._uri_name, urllib.quote(unicode(self._id).encode('utf-8')))
 
     @property
     def data(self):

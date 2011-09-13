@@ -10,6 +10,33 @@ from collections import defaultdict
 api_uri = 'http://api.discogs.com'
 user_agent = None
 
+class DiscogsAPIError(Exception):
+    """Root Exception-class for Discogs """
+    pass
+
+class UserAgentError(DiscogsAPIError):
+    """ Exceptionclass for User-Agent problems. """
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return repr(self.msg)
+
+class HTTPError(DiscogsAPIError):
+    """ Exceptionclass for HTTP(lib) errors. """
+    def __init__(self, code):
+        self.code = code
+        self.msg = httplib.responses[self.code]
+    def __str__(self):
+        return "HTTP status %i: %s." % (self.code, self.msg)
+
+class ResultError(DiscogsAPIError):
+    """ Exceptionclass for issues with the received result. """
+    def __init__(self, msg):
+        self.msg = msg
+    def __str__(self):
+        return repr(self.msg)
+
+
 class APIBase(object):
     def __init__(self):
         self._cached_response = None
@@ -34,7 +61,7 @@ class APIBase(object):
     def _response(self):
         if not self._cached_response:
             if not self._check_user_agent():
-                raise DiscogsAPIError, 'Invalid or no User-Agent set'
+                raise UserAgentError("Invalid or no User-Agent set.")
             self._cached_response = requests.get(self._uri, params=self._params, headers=self._headers)
 
         return self._cached_response
@@ -54,10 +81,7 @@ class APIBase(object):
             return release_json.get('resp').get(self._uri_name)
         else:
             status_code = self._response.status_code
-            raise DiscogsAPIError, '%s %s' % (status_code, httplib.responses[status_code])
-
-class DiscogsAPIError(BaseException):
-    pass
+            raise HTTPError(status_code)
 
 def _parse_credits(extraartists):
     """
@@ -285,7 +309,7 @@ class Search(APIBase):
 
         if page != self._page:
             if page > self.pages:
-                raise DiscogsAPIError, 'Page number exceeds maximum number of pages returned'
+                raise ResultError('Page number exceeds maximum number of pages returned.')
             self._params['page'] = page
             self._clear_cache()
 

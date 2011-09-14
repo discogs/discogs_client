@@ -11,28 +11,34 @@ api_uri = 'http://api.discogs.com'
 user_agent = None
 
 class DiscogsAPIError(Exception):
-    """Root Exception-class for Discogs """
+    """Root Exception class for Discogs API errors."""
     pass
 
+
 class UserAgentError(DiscogsAPIError):
-    """ Exceptionclass for User-Agent problems. """
+    """Exception class for User-Agent problems."""
     def __init__(self, msg):
         self.msg = msg
+
     def __str__(self):
         return repr(self.msg)
 
+
 class HTTPError(DiscogsAPIError):
-    """ Exceptionclass for HTTP(lib) errors. """
+    """Exception class for HTTP(lib) errors."""
     def __init__(self, code):
         self.code = code
         self.msg = httplib.responses[self.code]
+
     def __str__(self):
         return "HTTP status %i: %s." % (self.code, self.msg)
 
-class ResultError(DiscogsAPIError):
-    """ Exceptionclass for issues with the received result. """
+
+class PaginationError(DiscogsAPIError):
+    """Exception class for issues with paginated requests."""
     def __init__(self, msg):
         self.msg = msg
+
     def __str__(self):
         return repr(self.msg)
 
@@ -309,7 +315,7 @@ class Search(APIBase):
 
         if page != self._page:
             if page > self.pages:
-                raise ResultError('Page number exceeds maximum number of pages returned.')
+                raise PaginationError('Page number exceeds maximum number of pages returned.')
             self._params['page'] = page
             self._clear_cache()
 

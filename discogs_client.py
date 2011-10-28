@@ -1,5 +1,5 @@
-__version_info__ = (1,1,1)
-__version__ = '1.1.1'
+__version_info__ = (2,0,0)
+__version__ = '2.0.0'
 
 import requests
 import json
@@ -7,336 +7,336 @@ import urllib
 import httplib
 from collections import defaultdict
 
-api_uri = 'http://api.discogs.com'
-user_agent = None
+BASE_URL = 'http://api.discogs.com'
 
 class DiscogsAPIError(Exception):
     """Root Exception class for Discogs API errors."""
     pass
 
 
-class UserAgentError(DiscogsAPIError):
-    """Exception class for User-Agent problems."""
+class ConfigurationError(DiscogsAPIError):
+    """Exception class for problems with the configuration of this client."""
     def __init__(self, msg):
         self.msg = msg
 
     def __str__(self):
-        return repr(self.msg)
+        return self.msg
 
 
 class HTTPError(DiscogsAPIError):
-    """Exception class for HTTP(lib) errors."""
-    def __init__(self, code):
-        self.code = code
-        self.msg = httplib.responses[self.code]
+    """Exception class for HTTP errors."""
+    def __init__(self, message, code):
+        self.msg = '{} {}: {}'.format(code, httplib.responses[code], message)
 
     def __str__(self):
-        return "HTTP status %i: %s." % (self.code, self.msg)
+        return self.msg
 
 
-class PaginationError(DiscogsAPIError):
-    """Exception class for issues with paginated requests."""
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return repr(self.msg)
-
-
-class APIBase(object):
-    def __init__(self):
-        self._cached_response = None
-        self._params = {}
-        self._headers = { 'accept-encoding': 'gzip, deflate' }
-
-    def __str__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self._id)
-
-    def __repr__(self):
-        return self.__str__().encode('utf-8')
+class Client(object):
+    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_key=None):
+        self.user_agent = user_agent
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.access_key = access_key
+        self.verbose = False
 
     def _check_user_agent(self):
-        if 'user_agent' in globals() and user_agent is not None:
+        if self.user_agent:
             self._headers['user-agent'] = user_agent
-        return 'user-agent' in self._headers and self._headers.get('user-agent')
-
-    def _clear_cache(self):
-        self._cached_response = None
-
-    @property
-    def _response(self):
-        if not self._cached_response:
-            if not self._check_user_agent():
-                raise UserAgentError("Invalid or no User-Agent set.")
-            self._cached_response = requests.get(self._uri, params=self._params, headers=self._headers)
-
-        return self._cached_response
-
-    @property
-    def _uri_name(self):
-        return self.__class__.__name__.lower()
-
-    @property
-    def _uri(self):
-        return '%s/%s/%s' % (api_uri, self._uri_name, urllib.quote(unicode(self._id).encode('utf-8')))
-
-    @property
-    def data(self):
-        if self._response.content and self._response.status_code == 200:
-            release_json = json.loads(self._response.content)
-            return release_json.get('resp').get(self._uri_name)
         else:
-            status_code = self._response.status_code
-            raise HTTPError(status_code)
+            raise ConfigurationError("Invalid or no User-Agent set.")
 
-def _parse_credits(extraartists):
-    """
-    Parse release and track level credits
-    """
-    _credits = defaultdict(list)
-    for artist in extraartists:
-        role = artist.get('role')
-        tracks = artist.get('tracks')
+    def _request(self, method, url, data=None):
+        if self.verbose:
+            print ' '.join((method, url))
 
-        artist_dict = {'artists': Artist(artist['name'], anv=artist.get('anv'))}
+        response = requests.request(method, url, data=data)
 
-        if tracks:
-            artist_dict['tracks'] = tracks
+        if response.status_code == 204:
+            return None
 
-        _credits[role].append(artist_dict)
-    return _credits
+        body = json.loads(response.content)
 
-def _class_from_string(api_string):
-    class_map = {
-            'master': MasterRelease,
-            'release': Release,
-            'artist': Artist,
-            'label': Label
-    }
+        if 200 <= response.status_code < 300:
+            return body
+        else:
+            raise HTTPError(body['message'], response.status_code)
 
-    return class_map[api_string]
+    def _get(self, url):
+        return self._request('GET', url)
 
-class Artist(APIBase):
-    def __init__(self, name, anv=None):
-        self._id = name
-        self._aliases = []
-        self._namevariations = []
-        self._releases = []
-        self._anv = anv or None
-        APIBase.__init__(self)
+    def _delete(self, url):
+        return self._request('DELETE', url)
 
-    def __str__(self):
-        return '<%s "%s">' % (self.__class__.__name__, self._anv + '*' if self._anv else self._id)
+    def _post(self, url, data):
+        return self._request('POST', url, data)
 
-    @property
-    def name(self):
-        return self._id
+    def _patch(self, url, data):
+        return self._request('PATCH', url, data)
 
-    @property
-    def anv(self):
-        return self._anv
+    def _put(self, url, data):
+        return self._request('PUT', url, data)
 
-    @property
-    def aliases(self):
-        if not self._aliases:
-            for alias in self.data.get('aliases', []):
-                self._aliases.append(Artist(alias))
-        return self._aliases
+    def search(self, query):
+        return [
+            Artist(self, 1)
+        ]
 
-    @property
-    def releases(self):
-        # TODO: Implement fetch many release IDs
-        #return [Release(r.get('id') for r in self.data.get('releases')]
-        if not self._releases:
-            self._params.update({'releases': '1'})
-            self._clear_cache()
+    def artist(self, id):
+        return Artist(self, id)
 
-            for r in self.data.get('releases', []):
-                self._releases.append(_class_from_string(r['type'])(r['id']))
-        return self._releases
+    def release(self, id):
+        return Release(self, id)
 
-class Release(APIBase):
-    def __init__(self, id):
-        self._id = id
-        self._artists = []
-        self._master = None
-        self._labels = []
-        self._credits = None
-        self._tracklist = []
-        APIBase.__init__(self)
+    def master(self, id):
+        return Master(self, id)
 
-    @property
-    def artists(self):
-        if not self._artists:
-            self._artists = [Artist(a['name']) for a in self.data.get('artists', [])]
-        return self._artists
+    def label(self, id):
+        return Label(self, id)
 
-    @property
-    def master(self):
-        if not self._master and self.data.get('master_id'):
-            self._master = MasterRelease(self.data.get('master_id'))
-        return self._master
 
-    @property
-    def labels(self):
-        if not self._labels:
-            self._labels =  [Label(l['name']) for l in self.data.get('labels', [])]
-        return self._labels
+class BaseAPIObject(object):
+    def __init__(self, client, id):
+        self.data = {'id': id}
+        self.client = client
+        self._known_invalid_keys = []
+
+    @classmethod
+    def _from_dict(cls, client, dict_):
+        obj = cls(client, dict_['id'])
+        obj.data.update(dict_)
+        return obj
+
+    def refresh(self):
+        if self.data.get('resource_url'):
+            data = self.client._get(self.data['resource_url'])
+            self.data.update(data)
+
+    def fetch(self, key, default=None):
+        if key in self._known_invalid_keys:
+            return default
+
+        try:
+            return self.data[key]
+        except KeyError:
+            # Fetch the object if we don't know about this key.
+            # It might exist but not be in our cache.
+            self.refresh()
+            try:
+                return self.data[key]
+            except:
+                self._known_invalid_keys.append(key)
+                return default
+
+
+class PaginatedList(object):
+    def __init__(self, client, url):
+        self.client = client
+        self.url = url
+        self._num_pages = None
+        self._num_items = None
+        self._pages = {}
+        self._per_page = 50
+        self._list_key = 'items'
 
     @property
-    def credits(self):
-        if not self._credits:
-            self._credits = _parse_credits(self.data.get('extraartists', []))
-        return self._credits
+    def per_page(self):
+        return self._per_page
 
-    @property
-    def tracklist(self):
-        if not self._tracklist:
-            for track in self.data.get('tracklist', []):
-                artists = []
-                track['extraartists'] = _parse_credits(track.get('extraartists', []))
+    @per_page.setter
+    def per_page(self, value):
+        self._per_page = value
+        self._invalidate()
 
-                for artist in track.get('artists', []):
-                    artists.append(Artist(artist['name'], anv=artist.get('anv')))
+    def _invalidate(self):
+        self._pages = {}
+        self._num_pages = None
+        self._num_items = None
 
-                    if artist['join']:
-                        artists.append(artist['join'])
-                track['artists'] = artists
-                track['type'] = 'Track' if track['position'] else 'Index Track'
-
-                self._tracklist.append(track)
-        return self._tracklist
-
-    @property
-    def title(self):
-        return self.data.get('title')
-
-class MasterRelease(APIBase):
-    def __init__(self, id):
-        self._id = id
-        self._key_release = None
-        self._versions = []
-        self._artists = []
-        APIBase.__init__(self)
-
-    # Override class name introspection in BaseAPI since it would otherwise return "masterrelease"
-    @property
-    def _uri_name(self):
-        return 'master'
-
-    @property
-    def key_release(self):
-        if not self._key_release:
-            self._key_release = Release(self.data.get('main_release'))
-        return self._key_release
-
-    @property
-    def title(self):
-        return self.key_release.data.get('title')
-
-    @property
-    def versions(self):
-        if not self._versions:
-            for version in self.data.get('versions', []):
-                self._versions.append(Release(version.get('id')))
-        return self._versions
-
-    @property
-    def artists(self):
-        if not self._artists:
-            for artist in self.data.get('artists', []):
-                self._artists.append(Artist(artist.get('name')))
-        return self._artists
-
-    @property
-    def tracklist(self):
-        return self.key_release.tracklist
-
-class Label(APIBase):
-    def __init__(self, name):
-        self._id = name
-        self._sublabels = []
-        self._parent_label = None
-        APIBase.__init__(self)
-
-    @property
-    def sublabels(self):
-        if not self._sublabels:
-            for sublabel in self.data.get('sublabels', []):
-                self._sublabels.append(Label(sublabel))
-        return self._sublabels
-
-    @property
-    def parent_label(self):
-        if not self._parent_label and self.data.get('parentLabel'):
-            self._parent_label = Label(self.data.get('parentLabel'))
-        return self._parent_label
-
-    @property
-    def releases(self):
-        self._params.update({'releases': '1'})
-        self._clear_cache()
-        return self.data.get('releases')
-
-class Search(APIBase):
-    def __init__(self, query, page=1):
-        self._id = query
-        self._results = {}
-        self._exactresults = []
-        self._page = page
-        APIBase.__init__(self)
-        self._params['q'] = self._id
-        self._params['page'] = self._page
-
-    def _to_object(self, result):
-        id = result['title']
-        if result['type'] in ('master', 'release'):
-            id = result['uri'].split('/')[-1]
-        elif result['type'] == 'artist':
-            return Artist(id, anv=result.get('anv'))
-        return _class_from_string(result['type'])(id)
-
-    @property
-    def _uri(self):
-        return '%s/%s' % (api_uri, self._uri_name)
-
-    @property
-    def exactresults(self):
-        if not self.data:
-            return []
-
-        if not self._exactresults:
-            for result in self.data.get('exactresults', []):
-                self._exactresults.append(self._to_object(result))
-        return self._exactresults
-
-    def results(self, page=1):
-        page_key = 'page%s' % page
-
-        if page != self._page:
-            if page > self.pages:
-                raise PaginationError('Page number exceeds maximum number of pages returned.')
-            self._params['page'] = page
-            self._clear_cache()
-
-        if not self.data:
-            return []
-
-        if page_key not in self._results:
-            self._results[page_key] = []
-            for result in self.data['searchresults']['results']:
-                self._results[page_key].append(self._to_object(result))
-
-        return self._results[page_key]
-
-    @property
-    def numresults(self):
-        if not self.data:
-            return 0
-        return int(self.data['searchresults'].get('numResults', 0))
+    def _load_pagination_info(self):
+        data = self.client._get('%s?page=%d&per_page=%d' % (self.url, 1, self._per_page))
+        self._num_pages = data['pagination']['pages']
+        self._num_items = data['pagination']['items']
 
     @property
     def pages(self):
-        if not self.data:
-            return 0
-        return (self.numresults / 20) + 1
+        if self._num_pages is None:
+            self._load_pagination_info()
+        return self._num_pages
+
+    @property
+    def count(self):
+        if self._num_items is None:
+            self._load_pagination_info()
+        return self._num_items
+
+    def page(self, index):
+        if not index in self._pages:
+            data = self.client._get('%s?page=%d&per_page=%d' % (self.url, index, self._per_page))
+            self._pages[index] = [self._transform(item) for item in data[self._list_key]]
+        return self._pages[index]
+
+    def _transform(self, item):
+        return item
+
+    def __getitem__(self, index):
+        page_index = index / self.per_page + 1
+        offset = index % self.per_page
+        page = self.page(page_index)
+        return page[offset]
+
+    def __len__(self):
+        return self.count
+
+    def __iter__(self):
+        for i in xrange(1, self.pages + 1):
+            page = self.page(i)
+            for item in page:
+                yield item
+
+
+class Artist(BaseAPIObject):
+    def __init__(self, client, id):
+        super(Artist, self).__init__(client, id)
+        self.data['resource_url'] = BASE_URL + '/artists/%d' % id
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def name(self):
+        return self.fetch('name')
+
+    @property
+    def real_name(self):
+        return self.fetch('realname')
+
+    @property
+    def profile(self):
+        return self.fetch('profile')
+
+    @property
+    def data_quality(self):
+        return self.fetch('data_quality')
+
+    @property
+    def name_variations(self):
+        return self.fetch('namevariations')
+
+    @property
+    def aliases(self):
+        return [Artist._from_dict(self.client, d) for d in self.fetch('aliases', [])]
+
+    @property
+    def urls(self):
+        return self.fetch('urls')
+
+    @property
+    def releases(self):
+        return ReleaseList(self.client, self.fetch('releases_url'))
+
+    def __repr__(self):
+        return '<Artist %r %r>' % (self.id, self.name)
+
+
+class Release(BaseAPIObject):
+    def __init__(self, client, id):
+        super(Release, self).__init__(client, id)
+        self.data['resource_url'] = BASE_URL + '/releases/%d' % id
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def title(self):
+        return self.fetch('title')
+
+    @property
+    def year(self):
+        return self.fetch('year')
+
+    @property
+    def thumb(self):
+        return self.fetch('thumb')
+
+    @property
+    def data_quality(self):
+        return self.fetch('data_quality')
+
+    @property
+    def status(self):
+        return self.fetch('status')
+
+    @property
+    def videos(self):
+        return self.fetch('videos')
+
+    @property
+    def artists(self):
+        return [Artist._from_dict(self.client, d) for d in self.fetch('artists', [])]
+
+    @property
+    def credits(self):
+        return [Artist._from_dict(self.client, d) for d in self.fetch('extraartists', [])]
+
+    @property
+    def labels(self):
+        return [Label._from_dict(self.client, d) for d in self.fetch('labels', [])]
+
+    def __repr__(self):
+        return '<Release %r %r>' % (self.id, self.title)
+
+
+class Master(BaseAPIObject):
+    def __init__(self, client, id):
+        super(Master, self).__init__(client, id)
+        self.data['resource_url'] = BASE_URL + '/masters/%d' % id
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def title(self):
+        return self.fetch('title')
+
+    @property
+    def data_quality(self):
+        return self.fetch('data_quality')
+
+    def __repr__(self):
+        return '<Master %r %r>' % (self.id, self.title)
+
+
+class Label(BaseAPIObject):
+    def __init__(self, client, id):
+        super(Label, self).__init__(client, id)
+        self.data['resource_url'] = BASE_URL + '/labels/%d' % id
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def name(self):
+        return self.fetch('name')
+
+
+class ReleaseList(PaginatedList):
+    def __init__(self, client, url):
+        super(ReleaseList, self).__init__(client, url)
+        self._list_key = 'releases'
+
+    def _transform(self, item):
+        type = item.get('type', 'release')
+        return CLASS_MAP[type]._from_dict(self.client, item)
+
+
+CLASS_MAP = {
+    'artist': Artist,
+    'release': Release,
+    'master': Master,
+    'label': Label,
+}

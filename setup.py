@@ -21,6 +21,7 @@ setup(
             ],
         install_requires=[
             'requests',
+            'oauth2',
             ],
         py_modules=[
             'discogs_client',

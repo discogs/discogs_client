@@ -5,9 +5,24 @@ import requests
 import json
 import urllib
 import httplib
+import urlparse
+from datetime import datetime
 from collections import defaultdict
 
 BASE_URL = 'http://api.discogs.com'
+
+
+def _parse_timestamp(timestamp):
+    """Convert an ISO 8601 timestamp into a datetime."""
+    return datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')
+
+
+def _update_qs(url, params):
+    """A not-very-intelligent function to glom parameters onto a query string."""
+    joined_qs = '&'.join('='.join((str(k), str(v))) for k, v in params.iteritems())
+    separator = '&' if '?' in url else '?'
+    return url + separator + joined_qs
+
 
 class DiscogsAPIError(Exception):
     """Root Exception class for Discogs API errors."""
@@ -26,6 +41,7 @@ class ConfigurationError(DiscogsAPIError):
 class HTTPError(DiscogsAPIError):
     """Exception class for HTTP errors."""
     def __init__(self, message, code):
+        self.status_code = code
         self.msg = '{} {}: {}'.format(code, httplib.responses[code], message)
 
     def __str__(self):
@@ -35,9 +51,6 @@ class HTTPError(DiscogsAPIError):
 class Client(object):
     def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_key=None):
         self.user_agent = user_agent
-        self.consumer_key = consumer_key
-        self.consumer_secret = consumer_secret
-        self.access_key = access_key
         self.verbose = False
 
     def _check_user_agent(self):
@@ -78,34 +91,35 @@ class Client(object):
         return self._request('PUT', url, data)
 
     def search(self, query):
-        return [
-            Artist(self, 1)
-        ]
+        # TODO: Other filtering parameters
+        # TODO: Alias q to ql on the server side
+        return MixedObjectList(
+            self,
+            _update_qs(BASE_URL + '/database/search', {'ql': query}),
+            'results'
+        )
 
     def artist(self, id):
-        return Artist(self, id)
+        return Artist(self, {'id': id})
 
     def release(self, id):
-        return Release(self, id)
+        return Release(self, {'id': id})
 
     def master(self, id):
-        return Master(self, id)
+        return Master(self, {'id': id})
 
     def label(self, id):
-        return Label(self, id)
+        return Label(self, {'id': id})
+
+    def user(self, username):
+        return User(self, {'username': username})
 
 
 class BaseAPIObject(object):
-    def __init__(self, client, id):
-        self.data = {'id': id}
+    def __init__(self, client, dict_):
+        self.data = dict_
         self.client = client
         self._known_invalid_keys = []
-
-    @classmethod
-    def _from_dict(cls, client, dict_):
-        obj = cls(client, dict_['id'])
-        obj.data.update(dict_)
-        return obj
 
     def refresh(self):
         if self.data.get('resource_url'):
@@ -154,7 +168,7 @@ class PaginatedList(object):
         self._num_items = None
 
     def _load_pagination_info(self):
-        data = self.client._get('%s?page=%d&per_page=%d' % (self.url, 1, self._per_page))
+        data = self.client._get(_update_qs(self.url, {'page': 1, 'per_page': self._per_page}))
         self._num_pages = data['pagination']['pages']
         self._num_items = data['pagination']['items']
 
@@ -172,7 +186,7 @@ class PaginatedList(object):
 
     def page(self, index):
         if not index in self._pages:
-            data = self.client._get('%s?page=%d&per_page=%d' % (self.url, index, self._per_page))
+            data = self.client._get(_update_qs(self.url, {'page': index, 'per_page': self._per_page}))
             self._pages[index] = [self._transform(item) for item in data[self._list_key]]
         return self._pages[index]
 
@@ -182,7 +196,15 @@ class PaginatedList(object):
     def __getitem__(self, index):
         page_index = index / self.per_page + 1
         offset = index % self.per_page
-        page = self.page(page_index)
+
+        try:
+            page = self.page(page_index)
+        except HTTPError, e:
+            if e.status_code == 404:
+                raise IndexError(e.msg)
+            else:
+                raise
+
         return page[offset]
 
     def __len__(self):
@@ -196,9 +218,9 @@ class PaginatedList(object):
 
 
 class Artist(BaseAPIObject):
-    def __init__(self, client, id):
-        super(Artist, self).__init__(client, id)
-        self.data['resource_url'] = BASE_URL + '/artists/%d' % id
+    def __init__(self, client, dict_):
+        super(Artist, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/artists/%d' % dict_['id']
 
     @property
     def id(self):
@@ -226,7 +248,11 @@ class Artist(BaseAPIObject):
 
     @property
     def aliases(self):
-        return [Artist._from_dict(self.client, d) for d in self.fetch('aliases', [])]
+        return [Artist(self.client, d) for d in self.fetch('aliases', [])]
+
+    @property
+    def members(self):
+        return [Artist(self.client, d) for d in self.fetch('members', [])]
 
     @property
     def urls(self):
@@ -234,16 +260,16 @@ class Artist(BaseAPIObject):
 
     @property
     def releases(self):
-        return ReleaseList(self.client, self.fetch('releases_url'))
+        return MixedObjectList(self.client, self.fetch('releases_url'), 'releases')
 
     def __repr__(self):
         return '<Artist %r %r>' % (self.id, self.name)
 
 
 class Release(BaseAPIObject):
-    def __init__(self, client, id):
-        super(Release, self).__init__(client, id)
-        self.data['resource_url'] = BASE_URL + '/releases/%d' % id
+    def __init__(self, client, dict_):
+        super(Release, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/releases/%d' % dict_['id']
 
     @property
     def id(self):
@@ -275,24 +301,24 @@ class Release(BaseAPIObject):
 
     @property
     def artists(self):
-        return [Artist._from_dict(self.client, d) for d in self.fetch('artists', [])]
+        return [Artist(self.client, d) for d in self.fetch('artists', [])]
 
     @property
     def credits(self):
-        return [Artist._from_dict(self.client, d) for d in self.fetch('extraartists', [])]
+        return [Artist(self.client, d) for d in self.fetch('extraartists', [])]
 
     @property
     def labels(self):
-        return [Label._from_dict(self.client, d) for d in self.fetch('labels', [])]
+        return [Label(self.client, d) for d in self.fetch('labels', [])]
 
     def __repr__(self):
         return '<Release %r %r>' % (self.id, self.title)
 
 
 class Master(BaseAPIObject):
-    def __init__(self, client, id):
-        super(Master, self).__init__(client, id)
-        self.data['resource_url'] = BASE_URL + '/masters/%d' % id
+    def __init__(self, client, dict_):
+        super(Master, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/masters/%d' % dict_['id']
 
     @property
     def id(self):
@@ -306,14 +332,18 @@ class Master(BaseAPIObject):
     def data_quality(self):
         return self.fetch('data_quality')
 
+    @property
+    def versions(self):
+        return ObjectList(self.client, self.fetch('versions_url'), 'versions', Release)
+
     def __repr__(self):
         return '<Master %r %r>' % (self.id, self.title)
 
 
 class Label(BaseAPIObject):
-    def __init__(self, client, id):
-        super(Label, self).__init__(client, id)
-        self.data['resource_url'] = BASE_URL + '/labels/%d' % id
+    def __init__(self, client, dict_):
+        super(Label, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/labels/%d' % dict_['id']
 
     @property
     def id(self):
@@ -323,15 +353,90 @@ class Label(BaseAPIObject):
     def name(self):
         return self.fetch('name')
 
+    def __repr__(self):
+        return '<Label %r %r>' % (self.id, self.name)
 
-class ReleaseList(PaginatedList):
-    def __init__(self, client, url):
-        super(ReleaseList, self).__init__(client, url)
-        self._list_key = 'releases'
+
+class User(BaseAPIObject):
+    def __init__(self, client, dict_):
+        super(User, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/users/%s' % dict_['username']
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def username(self):
+        return self.fetch('username')
+
+    @property
+    def name(self):
+        return self.fetch('name')
+
+    @property
+    def profile(self):
+        return self.fetch('profile')
+
+    @property
+    def location(self):
+        return self.fetch('location')
+
+    @property
+    def home_page(self):
+        return self.fetch('home_page')
+
+    @property
+    def releases_contributed(self):
+        return self.fetch('releases_contributed')
+
+    @property
+    def registered(self):
+        return _parse_timestamp(self.fetch('registered'))
+
+    @property
+    def rating_average(self):
+        return self.fetch('rating_avg')
+
+    @property
+    def num_collection(self):
+        return self.fetch('num_collection')
+
+    @property
+    def num_wantlist(self):
+        return self.fetch('num_wantlist')
+
+    @property
+    def num_lists(self):
+        return self.fetch('num_lists')
+
+    @property
+    def rank(self):
+        return self.fetch('rank')
+
+    def __repr__(self):
+        return '<User %r %r>' % (self.id, self.username)
+
+
+class ObjectList(PaginatedList):
+    """A paginated list of objects of a particular class."""
+    def __init__(self, client, url, key, class_):
+        super(ObjectList, self).__init__(client, url)
+        self._list_key = key
+        self.class_ = class_
 
     def _transform(self, item):
-        type = item.get('type', 'release')
-        return CLASS_MAP[type]._from_dict(self.client, item)
+        return self.class_(self.client, item)
+
+
+class MixedObjectList(PaginatedList):
+    """A paginated list of objects identified by their type parameter."""
+    def __init__(self, client, url, key):
+        super(MixedObjectList, self).__init__(client, url)
+        self._list_key = key
+
+    def _transform(self, item):
+        return CLASS_MAP[item['type']](self.client, item)
 
 
 CLASS_MAP = {

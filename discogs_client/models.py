@@ -1,119 +1,6 @@
-__version_info__ = (2,0,0)
-__version__ = '2.0.0'
-
-import requests
-import json
-import urllib
-import httplib
-import urlparse
-from datetime import datetime
-from collections import defaultdict
-
-BASE_URL = 'http://api.discogs.com'
-
-
-def _parse_timestamp(timestamp):
-    """Convert an ISO 8601 timestamp into a datetime."""
-    return datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')
-
-
-def _update_qs(url, params):
-    """A not-very-intelligent function to glom parameters onto a query string."""
-    joined_qs = '&'.join('='.join((str(k), str(v))) for k, v in params.iteritems())
-    separator = '&' if '?' in url else '?'
-    return url + separator + joined_qs
-
-
-class DiscogsAPIError(Exception):
-    """Root Exception class for Discogs API errors."""
-    pass
-
-
-class ConfigurationError(DiscogsAPIError):
-    """Exception class for problems with the configuration of this client."""
-    def __init__(self, msg):
-        self.msg = msg
-
-    def __str__(self):
-        return self.msg
-
-
-class HTTPError(DiscogsAPIError):
-    """Exception class for HTTP errors."""
-    def __init__(self, message, code):
-        self.status_code = code
-        self.msg = '{} {}: {}'.format(code, httplib.responses[code], message)
-
-    def __str__(self):
-        return self.msg
-
-
-class Client(object):
-    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_key=None):
-        self.user_agent = user_agent
-        self.verbose = False
-
-    def _check_user_agent(self):
-        if self.user_agent:
-            self._headers['user-agent'] = user_agent
-        else:
-            raise ConfigurationError("Invalid or no User-Agent set.")
-
-    def _request(self, method, url, data=None):
-        if self.verbose:
-            print ' '.join((method, url))
-
-        response = requests.request(method, url, data=data)
-
-        if response.status_code == 204:
-            return None
-
-        body = json.loads(response.content)
-
-        if 200 <= response.status_code < 300:
-            return body
-        else:
-            raise HTTPError(body['message'], response.status_code)
-
-    def _get(self, url):
-        return self._request('GET', url)
-
-    def _delete(self, url):
-        return self._request('DELETE', url)
-
-    def _post(self, url, data):
-        return self._request('POST', url, data)
-
-    def _patch(self, url, data):
-        return self._request('PATCH', url, data)
-
-    def _put(self, url, data):
-        return self._request('PUT', url, data)
-
-    def search(self, query):
-        # TODO: Other filtering parameters
-        # TODO: Alias q to ql on the server side
-        return MixedObjectList(
-            self,
-            _update_qs(BASE_URL + '/database/search', {'ql': query}),
-            'results'
-        )
-
-    def artist(self, id):
-        return Artist(self, {'id': id})
-
-    def release(self, id):
-        return Release(self, {'id': id})
-
-    def master(self, id):
-        return Master(self, {'id': id})
-
-    def label(self, id):
-        return Label(self, {'id': id})
-
-    def user(self, username):
-        return User(self, {'username': username})
-
+from discogs_client import BASE_URL
+from discogs_client.exceptions import HTTPError
+from discogs_client.helpers import parse_timestamp, update_qs
 
 class BaseAPIObject(object):
     def __init__(self, client, dict_):
@@ -143,6 +30,15 @@ class BaseAPIObject(object):
                 return default
 
 
+# This is terribly cheesy, but makes the client API more consistent
+class SecondaryAPIObject(object):
+    def __init__(self, dict_):
+        self.data = dict_
+
+    def fetch(self, key, default=None):
+        return self.data.get(key, default)
+
+
 class PaginatedList(object):
     def __init__(self, client, url):
         self.client = client
@@ -168,7 +64,7 @@ class PaginatedList(object):
         self._num_items = None
 
     def _load_pagination_info(self):
-        data = self.client._get(_update_qs(self.url, {'page': 1, 'per_page': self._per_page}))
+        data = self.client._get(update_qs(self.url, {'page': 1, 'per_page': self._per_page}))
         self._num_pages = data['pagination']['pages']
         self._num_items = data['pagination']['items']
 
@@ -186,7 +82,7 @@ class PaginatedList(object):
 
     def page(self, index):
         if not index in self._pages:
-            data = self.client._get(_update_qs(self.url, {'page': index, 'per_page': self._per_page}))
+            data = self.client._get(update_qs(self.url, {'page': index, 'per_page': self._per_page}))
             self._pages[index] = [self._transform(item) for item in data[self._list_key]]
         return self._pages[index]
 
@@ -215,6 +111,33 @@ class PaginatedList(object):
             page = self.page(i)
             for item in page:
                 yield item
+
+
+class ObjectList(PaginatedList):
+    """A paginated list of objects of a particular class."""
+    def __init__(self, client, url, key, class_):
+        super(ObjectList, self).__init__(client, url)
+        self._list_key = key
+        self.class_ = class_
+
+    def _transform(self, item):
+        return self.class_(self.client, item)
+
+
+class MixedObjectList(PaginatedList):
+    """A paginated list of objects identified by their type parameter."""
+    def __init__(self, client, url, key):
+        super(MixedObjectList, self).__init__(client, url)
+        self._list_key = key
+
+    def _transform(self, item):
+        # In some cases, we want to map the 'title' key we get back in search
+        # results to 'name'. This way, you can repr() a page of search results
+        # without making 50 requests.
+        if item['type'] in ('label', 'artist'):
+            item['name'] = item['title']
+
+        return CLASS_MAP[item['type']](self.client, item)
 
 
 class Artist(BaseAPIObject):
@@ -297,7 +220,27 @@ class Release(BaseAPIObject):
 
     @property
     def videos(self):
-        return self.fetch('videos')
+        return [Video(d) for d in self.fetch('videos', [])]
+
+    @property
+    def genres(self):
+        return self.fetch('genres')
+
+    @property
+    def country(self):
+        return self.fetch('country')
+
+    @property
+    def notes(self):
+        return self.fetch('notes')
+
+    @property
+    def formats(self):
+        return self.fetch('formats')
+
+    @property
+    def tracklist(self):
+        return [Track(d) for d in self.fetch('tracklist', [])]
 
     @property
     def artists(self):
@@ -310,6 +253,18 @@ class Release(BaseAPIObject):
     @property
     def labels(self):
         return [Label(self.client, d) for d in self.fetch('labels', [])]
+
+    @property
+    def companies(self):
+        return [Label(self.client, d) for d in self.fetch('companies', [])]
+
+    @property
+    def master(self):
+        master_id = self.fetch('master_id')
+        if master_id:
+            return Master(self.client, {'id': master_id})
+        else:
+            return None
 
     def __repr__(self):
         return '<Release %r %r>' % (self.id, self.title)
@@ -336,6 +291,30 @@ class Master(BaseAPIObject):
     def versions(self):
         return ObjectList(self.client, self.fetch('versions_url'), 'versions', Release)
 
+    @property
+    def styles(self):
+        return self.fetch('styles')
+
+    @property
+    def genres(self):
+        return self.fetch('genres')
+
+    @property
+    def videos(self):
+        return [Video(d) for d in self.fetch('videos', [])]
+
+    @property
+    def main_release(self):
+        return Release(self.client, {'id': self.fetch('main_release')})
+
+    @property
+    def tracklist(self):
+        return [Track(d) for d in self.fetch('tracklist', [])]
+
+    @property
+    def images(self):
+        return self.fetch('images')
+
     def __repr__(self):
         return '<Master %r %r>' % (self.id, self.title)
 
@@ -352,6 +331,42 @@ class Label(BaseAPIObject):
     @property
     def name(self):
         return self.fetch('name')
+
+    @property
+    def profile(self):
+        return self.fetch('profile')
+
+    @property
+    def urls(self):
+        return self.fetch('urls')
+
+    @property
+    def images(self):
+        return self.fetch('images')
+
+    @property
+    def contact_info(self):
+        return self.fetch('contact_info')
+
+    @property
+    def data_quality(self):
+        return self.fetch('data_quality')
+
+    @property
+    def releases(self):
+        return ObjectList(self.client, self.fetch('releases_url'), 'releases', Release)
+
+    @property
+    def sublabels(self):
+        return [Label(self.client, d) for d in self.fetch('sublabels', [])]
+
+    @property
+    def parent_label(self):
+        parent_label_dict = self.fetch('parent_label')
+        if parent_label_dict:
+            return Label(self.client, parent_label_dict)
+        else:
+            return None
 
     def __repr__(self):
         return '<Label %r %r>' % (self.id, self.name)
@@ -392,7 +407,7 @@ class User(BaseAPIObject):
 
     @property
     def registered(self):
-        return _parse_timestamp(self.fetch('registered'))
+        return parse_timestamp(self.fetch('registered'))
 
     @property
     def rating_average(self):
@@ -411,6 +426,10 @@ class User(BaseAPIObject):
         return self.fetch('num_lists')
 
     @property
+    def inventory(self):
+        return ObjectList(self.client, self.fetch('inventory_url'), 'listings', Listing)
+
+    @property
     def rank(self):
         return self.fetch('rank')
 
@@ -418,25 +437,121 @@ class User(BaseAPIObject):
         return '<User %r %r>' % (self.id, self.username)
 
 
-class ObjectList(PaginatedList):
-    """A paginated list of objects of a particular class."""
-    def __init__(self, client, url, key, class_):
-        super(ObjectList, self).__init__(client, url)
-        self._list_key = key
-        self.class_ = class_
+class Listing(BaseAPIObject):
+    def __init__(self, client, dict_):
+        super(Listing, self).__init__(client, dict_)
+        self.data['resource_url'] = BASE_URL + '/marketplace/listings/%d' % dict_['id']
 
-    def _transform(self, item):
-        return self.class_(self.client, item)
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def status(self):
+        return self.fetch('status')
+
+    @property
+    def price(self):
+        return Price(self.fetch('price', {}))
+
+    @property
+    def allow_offers(self):
+        return self.fetch('allow_offers')
+
+    @property
+    def condition(self):
+        return self.fetch('condition')
+
+    @property
+    def sleeve_condition(self):
+        return self.fetch('sleeve_condition')
+
+    @property
+    def ships_from(self):
+        return self.fetch('ships_from')
+
+    @property
+    def comments(self):
+        return self.fetch('comments')
+
+    @property
+    def audio(self):
+        return self.fetch('audio')
+
+    @property
+    def posted(self):
+        return parse_timestamp(self.fetch('posted'))
+
+    @property
+    def release(self):
+        return Release(self.client, self.fetch('release'))
+
+    @property
+    def seller(self):
+        return User(self.client, self.fetch('seller'))
+
+    def __repr__(self):
+        return '<Listing %r %r>' % (self.id, self.release.data['description'])
 
 
-class MixedObjectList(PaginatedList):
-    """A paginated list of objects identified by their type parameter."""
-    def __init__(self, client, url, key):
-        super(MixedObjectList, self).__init__(client, url)
-        self._list_key = key
+class Track(SecondaryAPIObject):
+    @property
+    def duration(self):
+        return self.fetch('duration')
 
-    def _transform(self, item):
-        return CLASS_MAP[item['type']](self.client, item)
+    @property
+    def position(self):
+        return self.fetch('position')
+
+    @property
+    def title(self):
+        return self.fetch('title')
+
+    @property
+    def credits(self):
+        return [Artist(self.client, d) for d in self.fetch('extraartists', [])]
+
+    def __repr__(self):
+        return '<Track %r %r>' % (self.position, self.title)
+
+
+class Price(SecondaryAPIObject):
+    @property
+    def currency(self):
+        return self.fetch('currency')
+
+    @property
+    def value(self):
+        return self.fetch('value')
+
+    def __repr__(self):
+        return '<Price %r %r>' % (self.value, self.currency)
+
+
+class Video(SecondaryAPIObject):
+    @property
+    def duration(self):
+        return self.fetch('duration')
+
+    @property
+    def embed(self):
+        return self.fetch('embed')
+
+    @property
+    def title(self):
+        return self.fetch('title')
+
+    # The API returns this as 'uri' :\
+    @property
+    def url(self):
+        return self.fetch('uri')
+
+    @property
+    def description(self):
+        return self.fetch('description')
+
+    def __repr__(self):
+        return '<Video %r>' % (self.title)
 
 
 CLASS_MAP = {

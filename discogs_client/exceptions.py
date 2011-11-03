@@ -1,5 +1,3 @@
-import httplib
-
 class DiscogsAPIError(Exception):
     """Root Exception class for Discogs API errors."""
     pass
@@ -18,7 +16,7 @@ class HTTPError(DiscogsAPIError):
     """Exception class for HTTP errors."""
     def __init__(self, message, code):
         self.status_code = code
-        self.msg = '{} {}: {}'.format(code, httplib.responses[code], message)
+        self.msg = '{}: {}'.format(code, message)
 
     def __str__(self):
         return self.msg

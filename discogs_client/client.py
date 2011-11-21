@@ -127,7 +127,7 @@ class Client(object):
         if query:
             fields['q'] = ' '.join(query)
 
-        return models.MixedObjectList(
+        return models.MixedPaginatedList(
             self,
             update_qs(self._base_url + '/database/search', fields),
             'results'

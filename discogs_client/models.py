@@ -49,7 +49,7 @@ class SecondaryAPIObject(object):
         return self.data.get(key, default)
 
 
-class PaginatedList(object):
+class BasePaginatedResponse(object):
     """Base class for lists of objects spread across many URLs."""
     def __init__(self, client, url):
         self.client = client
@@ -130,10 +130,10 @@ class PaginatedList(object):
                 yield item
 
 
-class ObjectList(PaginatedList):
+class PaginatedList(BasePaginatedResponse):
     """A paginated list of objects of a particular class."""
     def __init__(self, client, url, key, class_):
-        super(ObjectList, self).__init__(client, url)
+        super(PaginatedList, self).__init__(client, url)
         self._list_key = key
         self.class_ = class_
 
@@ -141,10 +141,10 @@ class ObjectList(PaginatedList):
         return self.class_(self.client, item)
 
 
-class MixedObjectList(PaginatedList):
+class MixedPaginatedList(BasePaginatedResponse):
     """A paginated list of objects identified by their type parameter."""
     def __init__(self, client, url, key):
-        super(MixedObjectList, self).__init__(client, url)
+        super(MixedPaginatedList, self).__init__(client, url)
         self._list_key = key
 
     def _transform(self, item):
@@ -200,7 +200,7 @@ class Artist(BaseAPIObject):
 
     @property
     def releases(self):
-        return MixedObjectList(self.client, self.fetch('releases_url'), 'releases')
+        return MixedPaginatedList(self.client, self.fetch('releases_url'), 'releases')
 
     def __repr__(self):
         return '<Artist %r %r>' % (self.id, self.name)
@@ -306,7 +306,7 @@ class Master(BaseAPIObject):
 
     @property
     def versions(self):
-        return ObjectList(self.client, self.fetch('versions_url'), 'versions', Release)
+        return PaginatedList(self.client, self.fetch('versions_url'), 'versions', Release)
 
     @property
     def styles(self):
@@ -371,7 +371,7 @@ class Label(BaseAPIObject):
 
     @property
     def releases(self):
-        return ObjectList(self.client, self.fetch('releases_url'), 'releases', Release)
+        return PaginatedList(self.client, self.fetch('releases_url'), 'releases', Release)
 
     @property
     def sublabels(self):
@@ -444,11 +444,11 @@ class User(BaseAPIObject):
 
     @property
     def inventory(self):
-        return ObjectList(self.client, self.fetch('inventory_url'), 'listings', Listing)
+        return PaginatedList(self.client, self.fetch('inventory_url'), 'listings', Listing)
 
     @property
     def wantlist(self):
-        return ObjectList(self.client, self.fetch('wantlist_url'), 'wants', WantlistItem)
+        return Wantlist(self.client, self.fetch('wantlist_url'), 'wants', WantlistItem)
 
     @property
     def rank(self):
@@ -607,7 +607,7 @@ class Video(SecondaryAPIObject):
         return '<Video %r>' % (self.title)
 
 
-# Only things that can show up in a MixedObjectList need to go here
+# Only things that can show up in a MixedPaginatedList need to go here
 CLASS_MAP = {
     'artist': Artist,
     'release': Release,

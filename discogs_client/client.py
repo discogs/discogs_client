@@ -71,24 +71,30 @@ class Client(object):
         return self._token['oauth_token'], self._token['oauth_token_secret']
 
     def _check_user_agent(self):
-        if self.user_agent:
-            self._headers['user-agent'] = user_agent
-        else:
+        if not self.user_agent:
             raise ConfigurationError('Invalid or no User-Agent set.')
 
     def _request(self, method, url, data=None):
         if self.verbose:
             print ' '.join((method, url))
 
+        headers = {
+            'Accept-Encoding': 'gzip',
+            'User-Agent': self.user_agent,
+        }
+
+        if data:
+            headers['Content-Type'] = 'application/json'
+
         if self.authenticated:
             if data:
-                body = urllib.urlencode(data)
-                resp, content = self._oauth_client.request(url, method, body)
+                body = json.dumps(data)
+                resp, content = self._oauth_client.request(url, method, body, headers=headers)
             else:
-                resp, content = self._oauth_client.request(url, method)
+                resp, content = self._oauth_client.request(url, method, headers=headers)
             status_code = int(resp['status'])
         else:
-            response = requests.request(method, url, data=data)
+            response = requests.request(method, url, data=data, headers=headers)
             content = response.content
             status_code = response.status_code
 

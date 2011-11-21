@@ -4,14 +4,15 @@ import oauth2
 import urllib
 import urlparse
 
-from discogs_client import models, BASE_URL
+from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
 
-REQUEST_TOKEN_URL = BASE_URL + '/oauth/request_token'
-AUTHORIZE_URL = 'http://appdev1.prod.discogs.com:8085/oauth/authorize'
-ACCESS_TOKEN_URL = BASE_URL + '/oauth/access_token'
-
 class Client(object):
+    _base_url = 'http://api.discogs.com'
+    _request_token_url = 'http://api.discogs.com/oauth/request_token'
+    _authorize_url = 'http://www.discogs.com/oauth/authorize'
+    _access_token_url = 'http://api.discogs.com/oauth/access_token'
+
     def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_token=None, access_secret=None):
         self.user_agent = user_agent
         self.verbose = False
@@ -39,7 +40,7 @@ class Client(object):
             params['oauth_callback'] = callback_url
         postdata = urllib.urlencode(params)
 
-        resp, content = self._oauth_client.request(REQUEST_TOKEN_URL, 'POST', body=postdata)
+        resp, content = self._oauth_client.request(self._request_token_url, 'POST', body=postdata)
         if resp['status'] != '200':
             raise HTTPError('Invalid response from request token URL.', int(resp['status']))
         self._token = dict(urlparse.parse_qsl(content))
@@ -47,7 +48,7 @@ class Client(object):
         params = {'oauth_token': self._token['oauth_token']}
         query_string = urllib.urlencode(params)
 
-        return '?'.join((AUTHORIZE_URL, query_string))
+        return '?'.join((self._authorize_url, query_string))
 
     def get_access_token(self, verifier):
         token = oauth2.Token(
@@ -57,7 +58,7 @@ class Client(object):
         token.set_verifier(verifier)
         self._oauth_client = oauth2.Client(self._consumer, token)
 
-        resp, content = self._oauth_client.request(ACCESS_TOKEN_URL, 'POST')
+        resp, content = self._oauth_client.request(self._access_token_url, 'POST')
         self._token = dict(urlparse.parse_qsl(content))
 
         token = oauth2.Token(
@@ -122,7 +123,7 @@ class Client(object):
 
         return models.MixedObjectList(
             self,
-            _update_qs(BASE_URL + '/database/search', fields),
+            update_qs(self._base_url + '/database/search', fields),
             'results'
         )
 
@@ -144,11 +145,10 @@ class Client(object):
     def listing(self, id):
         return models.Listing(self, {'id': id})
 
-    def identity(self):
-        resp = self._get(BASE_URL + '/oauth/identity')
-        return models.User(self, resp)
-
     def fee_for(self, price, currency='USD'):
-        resp = self._get(BASE_URL + '/marketplace/fee/%f/%s' % (float(price), currency))
+        resp = self._get(self._base_url + '/marketplace/fee/%f/%s' % (float(price), currency))
         return models.Price(self, {'value': resp['value'], 'currency': resp['currency']})
 
+    def identity(self):
+        resp = self._get(self._base_url + '/oauth/identity')
+        return models.User(self, resp)

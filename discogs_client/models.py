@@ -1,4 +1,3 @@
-from discogs_client import BASE_URL
 from discogs_client.exceptions import HTTPError
 from discogs_client.helpers import parse_timestamp, update_qs
 
@@ -161,7 +160,7 @@ class MixedObjectList(PaginatedList):
 class Artist(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Artist, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/artists/%d' % dict_['id']
+        self.data['resource_url'] = client._base_url + '/artists/%d' % dict_['id']
 
     @property
     def id(self):
@@ -210,7 +209,7 @@ class Artist(BaseAPIObject):
 class Release(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Release, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/releases/%d' % dict_['id']
+        self.data['resource_url'] = client._base_url + '/releases/%d' % dict_['id']
 
     @property
     def id(self):
@@ -291,7 +290,7 @@ class Release(BaseAPIObject):
 class Master(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Master, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/masters/%d' % dict_['id']
+        self.data['resource_url'] = client._base_url + '/masters/%d' % dict_['id']
 
     @property
     def id(self):
@@ -340,7 +339,7 @@ class Master(BaseAPIObject):
 class Label(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Label, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/labels/%d' % dict_['id']
+        self.data['resource_url'] = client._base_url + '/labels/%d' % dict_['id']
 
     @property
     def id(self):
@@ -393,7 +392,7 @@ class Label(BaseAPIObject):
 class User(BaseAPIObject):
     def __init__(self, client, dict_):
         super(User, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/users/%s' % dict_['username']
+        self.data['resource_url'] = client._base_url + '/users/%s' % dict_['username']
 
     @property
     def id(self):
@@ -490,7 +489,7 @@ class WantlistItem(BaseAPIObject):
 class Listing(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Listing, self).__init__(client, dict_)
-        self.data['resource_url'] = BASE_URL + '/marketplace/listings/%d' % dict_['id']
+        self.data['resource_url'] = client._base_url + '/marketplace/listings/%d' % dict_['id']
 
     @property
     def id(self):

@@ -195,6 +195,10 @@ class Artist(BaseAPIObject):
         return [Artist(self.client, d) for d in self.fetch('members', [])]
 
     @property
+    def groups(self):
+        return [Artist(self.client, d) for d in self.fetch('groups', [])]
+
+    @property
     def urls(self):
         return self.fetch('urls')
 

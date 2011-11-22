@@ -16,7 +16,7 @@ class HTTPError(DiscogsAPIError):
     """Exception class for HTTP errors."""
     def __init__(self, message, code):
         self.status_code = code
-        self.msg = '{}: {}'.format(code, message)
+        self.msg = '%d: %s' % (code, message)
 
     def __str__(self):
         return self.msg

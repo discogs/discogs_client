@@ -9,3 +9,6 @@ def update_qs(url, params):
     joined_qs = '&'.join('='.join((str(k), str(v))) for k, v in params.iteritems())
     separator = '&' if '?' in url else '?'
     return url + separator + joined_qs
+
+def omit_none(dict_):
+    return dict((k, v) for k, v in dict_.iteritems() if v is not None)

@@ -1,5 +1,5 @@
 from discogs_client.exceptions import HTTPError
-from discogs_client.helpers import parse_timestamp, update_qs
+from discogs_client.helpers import parse_timestamp, update_qs, omit_none
 
 class BaseAPIObject(object):
     """A first-order API object that has a canonical endpoint of its own."""
@@ -7,13 +7,19 @@ class BaseAPIObject(object):
         self.data = dict_
         self.client = client
         self._known_invalid_keys = []
+        self.changes = {}
 
     def refresh(self):
         if self.data.get('resource_url'):
             data = self.client._get(self.data['resource_url'])
             self.data.update(data)
 
-    # TODO: This needs to use the oauth2 client
+    def save(self):
+        if self.data.get('resource_url'):
+            self.client._patch(self.data['resource_url'], self.changes)
+            self.data.update(self.changes)
+            self.changes = {}
+
     def delete(self):
         if self.data.get('resource_url'):
             self.client._delete(self.data['resource_url'])
@@ -23,16 +29,21 @@ class BaseAPIObject(object):
             return default
 
         try:
-            return self.data[key]
+            # First, look in the cache of pending changes
+            return self.changes[key]
         except KeyError:
-            # Fetch the object if we don't know about this key.
-            # It might exist but not be in our cache.
-            self.refresh()
             try:
+                # Next, look in the potentially incomplete local cache
                 return self.data[key]
-            except:
-                self._known_invalid_keys.append(key)
-                return default
+            except KeyError:
+                # Now refresh the object from its resource_url.
+                # The key might exist but not be in our cache.
+                self.refresh()
+                try:
+                    return self.data[key]
+                except:
+                    self._known_invalid_keys.append(key)
+                    return default
 
 
 # This is terribly cheesy, but makes the client API more consistent
@@ -139,6 +150,22 @@ class PaginatedList(BasePaginatedResponse):
 
     def _transform(self, item):
         return self.class_(self.client, item)
+
+
+class Wantlist(PaginatedList):
+    def add(self, release, notes=None, notes_public=None, rating=None):
+        release_id = release.id if isinstance(release, Release) else release
+        data = {
+            'release_id': release_id,
+            'notes': notes,
+            'notes_public': notes_public,
+            'rating': rating,
+        }
+        self.client._put(self.url + '/' + str(release_id), omit_none(data))
+
+    def remove(self, release):
+        release_id = release.id if isinstance(release, Release) else release
+        self.client._delete(self.url + '/' + str(release_id))
 
 
 class MixedPaginatedList(BasePaginatedResponse):
@@ -410,17 +437,33 @@ class User(BaseAPIObject):
     def name(self):
         return self.fetch('name')
 
+    @name.setter
+    def name(self, value):
+        self.changes['name'] = value
+
     @property
     def profile(self):
         return self.fetch('profile')
+
+    @profile.setter
+    def profile(self, value):
+        self.changes['profile'] = value
 
     @property
     def location(self):
         return self.fetch('location')
 
+    @location.setter
+    def location(self, value):
+        self.changes['location'] = value
+
     @property
     def home_page(self):
         return self.fetch('home_page')
+
+    @home_page.setter
+    def home_page(self, value):
+        self.changes['home_page'] = value
 
     @property
     def releases_contributed(self):
@@ -453,6 +496,11 @@ class User(BaseAPIObject):
     @property
     def wantlist(self):
         return Wantlist(self.client, self.fetch('wantlist_url'), 'wants', WantlistItem)
+
+    @property
+    def collection_folders(self):
+        resp = self.client._get(self.fetch('collection_folders_url'))
+        return [CollectionFolder(self.client, d) for d in resp['folders']]
 
     @property
     def rank(self):
@@ -488,6 +536,61 @@ class WantlistItem(BaseAPIObject):
 
     def __repr__(self):
         return '<WantlistItem %r %r>' % (self.id, self.release.title)
+
+
+class CollectionItemInstance(BaseAPIObject):
+    def __init__(self, client, dict_):
+        super(CollectionItemInstance, self).__init__(client, dict_)
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def rating(self):
+        return self.fetch('rating')
+
+    @property
+    def folder_id(self):
+        # TODO: needs folder_url
+        return self.fetch('folder_id')
+
+    @property
+    def notes(self):
+        # TODO: need resource_url on fields
+        return self.fetch('notes')
+
+    @property
+    def release(self):
+        return Release(self.client, self.fetch('basic_information'))
+
+    def __repr__(self):
+        return '<CollectionItemInstance %r %r>' % (self.id, self.release.title)
+
+
+class CollectionFolder(BaseAPIObject):
+    def __init__(self, client, dict_):
+        super(CollectionFolder, self).__init__(client, dict_)
+
+    @property
+    def id(self):
+        return self.fetch('id')
+
+    @property
+    def name(self):
+        return self.fetch('name')
+
+    @property
+    def count(self):
+        return self.fetch('count')
+
+    @property
+    def releases(self):
+        # TODO: Needs releases_url
+        return PaginatedList(self.client, self.fetch('resource_url') + '/releases', 'releases', CollectionItemInstance)
+
+    def __repr__(self):
+        return '<CollectionFolder %r %r>' % (self.id, self.name)
 
 
 class Listing(BaseAPIObject):

@@ -396,7 +396,7 @@ class Listing(BaseAPIObject):
 
     @property
     def price(self):
-        return Price(self.client, self.fetch('price', {}))
+        return Price(self.client, self.fetch('price'))
 
     @property
     def posted(self):

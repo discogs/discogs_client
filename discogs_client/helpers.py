@@ -37,7 +37,8 @@ class Fetched(object):
 
     def __set__(self, obj, value):
         if self.settable:
-            pass
+            obj.changes[self.name] = value
+            return
         raise AttributeError("can't set attribute")
 
 

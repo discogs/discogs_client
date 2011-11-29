@@ -16,7 +16,8 @@ class BaseAPIObject(object):
 
     def save(self):
         if self.data.get('resource_url'):
-            self.client._patch(self.data['resource_url'], self.changes)
+            # TODO: This should be PATCH
+            self.client._post(self.data['resource_url'], self.changes)
             self.data.update(self.changes)
             self.changes = {}
 

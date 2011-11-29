@@ -13,13 +13,15 @@ class BaseAPIObject(object):
         if self.data.get('resource_url'):
             data = self.client._get(self.data['resource_url'])
             self.data.update(data)
+            self.changes = {}
 
     def save(self):
         if self.data.get('resource_url'):
             # TODO: This should be PATCH
             self.client._post(self.data['resource_url'], self.changes)
-            self.data.update(self.changes)
-            self.changes = {}
+
+            # Refresh the object, in case there were side-effects
+            self.refresh()
 
     def delete(self):
         if self.data.get('resource_url'):

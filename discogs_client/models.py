@@ -184,34 +184,11 @@ class MixedPaginatedList(BasePaginatedResponse):
         return CLASS_MAP[item['type']](self.client, item)
 
 
+@fetches(['id', 'name', 'real_name', 'profile', 'data_quality', 'name_variations', 'urls'])
 class Artist(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Artist, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/artists/%d' % dict_['id']
-
-    @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def name(self):
-        return self.fetch('name')
-
-    @property
-    def real_name(self):
-        return self.fetch('realname')
-
-    @property
-    def profile(self):
-        return self.fetch('profile')
-
-    @property
-    def data_quality(self):
-        return self.fetch('data_quality')
-
-    @property
-    def name_variations(self):
-        return self.fetch('namevariations')
 
     @property
     def aliases(self):
@@ -226,10 +203,6 @@ class Artist(BaseAPIObject):
         return [Artist(self.client, d) for d in self.fetch('groups', [])]
 
     @property
-    def urls(self):
-        return self.fetch('urls')
-
-    @property
     def releases(self):
         return MixedPaginatedList(self.client, self.fetch('releases_url'), 'releases')
 
@@ -237,54 +210,18 @@ class Artist(BaseAPIObject):
         return '<Artist %r %r>' % (self.id, self.name)
 
 
+@fetches([
+    'id', 'title', 'year', 'thumb', 'data_quality', 'status', 'genres',
+    'country', 'notes', 'formats',
+])
 class Release(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Release, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/releases/%d' % dict_['id']
 
     @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def title(self):
-        return self.fetch('title')
-
-    @property
-    def year(self):
-        return self.fetch('year')
-
-    @property
-    def thumb(self):
-        return self.fetch('thumb')
-
-    @property
-    def data_quality(self):
-        return self.fetch('data_quality')
-
-    @property
-    def status(self):
-        return self.fetch('status')
-
-    @property
     def videos(self):
         return [Video(self.client, d) for d in self.fetch('videos', [])]
-
-    @property
-    def genres(self):
-        return self.fetch('genres')
-
-    @property
-    def country(self):
-        return self.fetch('country')
-
-    @property
-    def notes(self):
-        return self.fetch('notes')
-
-    @property
-    def formats(self):
-        return self.fetch('formats')
 
     @property
     def tracklist(self):
@@ -318,34 +255,15 @@ class Release(BaseAPIObject):
         return '<Release %r %r>' % (self.id, self.title)
 
 
+@fetches(['id', 'title', 'data_quality', 'styles', 'genres', 'images'])
 class Master(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Master, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/masters/%d' % dict_['id']
 
     @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def title(self):
-        return self.fetch('title')
-
-    @property
-    def data_quality(self):
-        return self.fetch('data_quality')
-
-    @property
     def versions(self):
         return PaginatedList(self.client, self.fetch('versions_url'), 'versions', Release)
-
-    @property
-    def styles(self):
-        return self.fetch('styles')
-
-    @property
-    def genres(self):
-        return self.fetch('genres')
 
     @property
     def videos(self):
@@ -359,46 +277,17 @@ class Master(BaseAPIObject):
     def tracklist(self):
         return [Track(self.client, d) for d in self.fetch('tracklist', [])]
 
-    @property
-    def images(self):
-        return self.fetch('images')
-
     def __repr__(self):
         return '<Master %r %r>' % (self.id, self.title)
 
 
+@fetches([
+    'id', 'name', 'profile', 'urls', 'images', 'contact_info', 'data_quality',
+])
 class Label(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Label, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/labels/%d' % dict_['id']
-
-    @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def name(self):
-        return self.fetch('name')
-
-    @property
-    def profile(self):
-        return self.fetch('profile')
-
-    @property
-    def urls(self):
-        return self.fetch('urls')
-
-    @property
-    def images(self):
-        return self.fetch('images')
-
-    @property
-    def contact_info(self):
-        return self.fetch('contact_info')
-
-    @property
-    def data_quality(self):
-        return self.fetch('data_quality')
 
     @property
     def releases(self):
@@ -420,74 +309,19 @@ class Label(BaseAPIObject):
         return '<Label %r %r>' % (self.id, self.name)
 
 
+@fetches([
+    'id', 'username', 'releases_contributed', 'num_collection', 'num_wantlist',
+    'num_lists', 'rank', 'rating_avg'
+])
+@fetches(['name', 'profile', 'location', 'home_page'], settable=True)
 class User(BaseAPIObject):
     def __init__(self, client, dict_):
         super(User, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/users/%s' % dict_['username']
 
     @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def username(self):
-        return self.fetch('username')
-
-    @property
-    def name(self):
-        return self.fetch('name')
-
-    @name.setter
-    def name(self, value):
-        self.changes['name'] = value
-
-    @property
-    def profile(self):
-        return self.fetch('profile')
-
-    @profile.setter
-    def profile(self, value):
-        self.changes['profile'] = value
-
-    @property
-    def location(self):
-        return self.fetch('location')
-
-    @location.setter
-    def location(self, value):
-        self.changes['location'] = value
-
-    @property
-    def home_page(self):
-        return self.fetch('home_page')
-
-    @home_page.setter
-    def home_page(self, value):
-        self.changes['home_page'] = value
-
-    @property
-    def releases_contributed(self):
-        return self.fetch('releases_contributed')
-
-    @property
     def registered(self):
         return parse_timestamp(self.fetch('registered'))
-
-    @property
-    def rating_average(self):
-        return self.fetch('rating_avg')
-
-    @property
-    def num_collection(self):
-        return self.fetch('num_collection')
-
-    @property
-    def num_wantlist(self):
-        return self.fetch('num_wantlist')
-
-    @property
-    def num_lists(self):
-        return self.fetch('num_lists')
 
     @property
     def inventory(self):
@@ -502,33 +336,14 @@ class User(BaseAPIObject):
         resp = self.client._get(self.fetch('collection_folders_url'))
         return [CollectionFolder(self.client, d) for d in resp['folders']]
 
-    @property
-    def rank(self):
-        return self.fetch('rank')
-
     def __repr__(self):
         return '<User %r %r>' % (self.id, self.username)
 
 
+@fetches(['id', 'rating', 'notes', 'notes_public'])
 class WantlistItem(BaseAPIObject):
     def __init__(self, client, dict_):
         super(WantlistItem, self).__init__(client, dict_)
-
-    @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def rating(self):
-        return self.fetch('rating')
-
-    @property
-    def notes(self):
-        return self.fetch('notes')
-
-    @property
-    def notes_public(self):
-        return self.fetch('notes_public')
 
     @property
     def release(self):
@@ -538,27 +353,12 @@ class WantlistItem(BaseAPIObject):
         return '<WantlistItem %r %r>' % (self.id, self.release.title)
 
 
+# TODO: folder_id should be a Folder object; needs folder_url
+# TODO: notes should be first-order (somehow); needs resource_url
+@fetches(['id', 'rating', 'folder_id', 'notes'])
 class CollectionItemInstance(BaseAPIObject):
     def __init__(self, client, dict_):
         super(CollectionItemInstance, self).__init__(client, dict_)
-
-    @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def rating(self):
-        return self.fetch('rating')
-
-    @property
-    def folder_id(self):
-        # TODO: needs folder_url
-        return self.fetch('folder_id')
-
-    @property
-    def notes(self):
-        # TODO: need resource_url on fields
-        return self.fetch('notes')
 
     @property
     def release(self):
@@ -568,21 +368,10 @@ class CollectionItemInstance(BaseAPIObject):
         return '<CollectionItemInstance %r %r>' % (self.id, self.release.title)
 
 
+@fetches(['id', 'name', 'count'])
 class CollectionFolder(BaseAPIObject):
     def __init__(self, client, dict_):
         super(CollectionFolder, self).__init__(client, dict_)
-
-    @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def name(self):
-        return self.fetch('name')
-
-    @property
-    def count(self):
-        return self.fetch('count')
 
     @property
     def releases(self):
@@ -593,46 +382,18 @@ class CollectionFolder(BaseAPIObject):
         return '<CollectionFolder %r %r>' % (self.id, self.name)
 
 
+@fetches([
+    'id', 'status', 'allow_offers', 'condition', 'sleeve_condition',
+    'ships_from', 'comments', 'audio',
+])
 class Listing(BaseAPIObject):
     def __init__(self, client, dict_):
         super(Listing, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/marketplace/listings/%d' % dict_['id']
 
     @property
-    def id(self):
-        return self.fetch('id')
-
-    @property
-    def status(self):
-        return self.fetch('status')
-
-    @property
     def price(self):
         return Price(self.client, self.fetch('price', {}))
-
-    @property
-    def allow_offers(self):
-        return self.fetch('allow_offers')
-
-    @property
-    def condition(self):
-        return self.fetch('condition')
-
-    @property
-    def sleeve_condition(self):
-        return self.fetch('sleeve_condition')
-
-    @property
-    def ships_from(self):
-        return self.fetch('ships_from')
-
-    @property
-    def comments(self):
-        return self.fetch('comments')
-
-    @property
-    def audio(self):
-        return self.fetch('audio')
 
     @property
     def posted(self):
@@ -650,19 +411,8 @@ class Listing(BaseAPIObject):
         return '<Listing %r %r>' % (self.id, self.release.data['description'])
 
 
+@fetches(['duration', 'position', 'title'])
 class Track(SecondaryAPIObject):
-    @property
-    def duration(self):
-        return self.fetch('duration')
-
-    @property
-    def position(self):
-        return self.fetch('position')
-
-    @property
-    def title(self):
-        return self.fetch('title')
-
     @property
     def artists(self):
         return [Artist(self.client, d) for d in self.fetch('artists', [])]
@@ -675,40 +425,18 @@ class Track(SecondaryAPIObject):
         return '<Track %r %r>' % (self.position, self.title)
 
 
+@fetches(['currency', 'value'])
 class Price(SecondaryAPIObject):
-    @property
-    def currency(self):
-        return self.fetch('currency')
-
-    @property
-    def value(self):
-        return self.fetch('value')
-
     def __repr__(self):
         return '<Price %r %r>' % (self.value, self.currency)
 
 
+@fetches(['duration', 'embed', 'title', 'description'])
 class Video(SecondaryAPIObject):
-    @property
-    def duration(self):
-        return self.fetch('duration')
-
-    @property
-    def embed(self):
-        return self.fetch('embed')
-
-    @property
-    def title(self):
-        return self.fetch('title')
-
     # The API returns this as 'uri' :\
     @property
     def url(self):
         return self.fetch('uri')
-
-    @property
-    def description(self):
-        return self.fetch('description')
 
     def __repr__(self):
         return '<Video %r>' % (self.title)

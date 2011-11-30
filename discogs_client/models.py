@@ -171,6 +171,17 @@ class Wantlist(PaginatedList):
         self.client._delete(self.url + '/' + str(release_id))
 
 
+class OrderMessagesList(PaginatedList):
+    def add(self, message=None, status=None, email_buyer=True, email_seller=False):
+        data = {
+            'message': message,
+            'status': status,
+            'email_buyer': email_buyer,
+            'email_seller': email_seller,
+        }
+        self.client._post(self.url, omit_none(data))
+
+
 class MixedPaginatedList(BasePaginatedResponse):
     """A paginated list of objects identified by their type parameter."""
     def __init__(self, client, url, key):
@@ -331,6 +342,10 @@ class User(BaseAPIObject):
         return PaginatedList(self.client, self.fetch('inventory_url'), 'listings', Listing)
 
     @property
+    def orders(self):
+        return PaginatedList(self.client, self.client._base_url + '/marketplace/orders', 'orders', Order)
+
+    @property
     def wantlist(self):
         return Wantlist(self.client, self.fetch('wantlist_url'), 'wants', WantlistItem)
 
@@ -412,6 +427,71 @@ class Listing(BaseAPIObject):
 
     def __repr__(self):
         return '<Listing %r %r>' % (self.id, self.release.data['description'])
+
+
+@fetches([
+    'id', 'next_status', 'shipping_address', 'additional_instructions'
+])
+@fetches(['status'], settable=True)
+class Order(BaseAPIObject):
+    def __init__(self, client, dict_):
+        super(Order, self).__init__(client, dict_)
+        self.data['resource_url'] = client._base_url + '/marketplace/orders/%s' % dict_['id']
+
+    @property
+    def created(self):
+        return parse_timestamp(self.fetch('created'))
+
+    @property
+    def last_activity(self):
+        return parse_timestamp(self.fetch('last_activity'))
+
+    @property
+    def fee(self):
+        return Price(self.client, self.fetch('fee'))
+
+    @property
+    def shipping(self):
+        return Price(self.client, self.fetch('shipping'))
+
+    # Setting shipping is a little weird -- you can't change the
+    # currency, and you use the 'shipping' key instead of 'value'
+    @shipping.setter
+    def shipping(self, value):
+        self.changes['shipping'] = value
+
+    @property
+    def buyer(self):
+        return User(self.client, self.fetch('buyer'))
+
+    @property
+    def seller(self):
+        return User(self.client, self.fetch('seller'))
+
+    @property
+    def messages(self):
+        return OrderMessagesList(self.client, self.fetch('messages_url'), 'messages', OrderMessage)
+
+    def __repr__(self):
+        return '<Order %r>' % self.id
+
+
+@fetches(['subject', 'message'])
+class OrderMessage(SecondaryAPIObject):
+    @property
+    def to(self):
+        return User(self.client, self.fetch('to'))
+
+    @property
+    def order(self):
+        return Order(self.client, self.fetch('order'))
+
+    @property
+    def timestamp(self):
+        return parse_timestamp(self.fetch('timestamp'))
+
+    def __repr__(self):
+        return '<OrderMessage to:%r>' % self.to.username
 
 
 @fetches(['duration', 'position', 'title'])

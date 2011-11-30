@@ -363,7 +363,8 @@ class User(BaseAPIObject):
         return '<User %r %r>' % (self.id, self.username)
 
 
-@fetches(['id', 'rating', 'notes', 'notes_public'])
+@fetches(['id'])
+@fetches(['rating', 'notes', 'notes_public'], settable=True)
 class WantlistItem(BaseAPIObject):
     def __init__(self, client, dict_):
         super(WantlistItem, self).__init__(client, dict_)

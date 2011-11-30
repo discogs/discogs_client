@@ -35,18 +35,23 @@ class BaseAPIObject(object):
             # First, look in the cache of pending changes
             return self.changes[key]
         except KeyError:
-            try:
-                # Next, look in the potentially incomplete local cache
-                return self.data[key]
-            except KeyError:
-                # Now refresh the object from its resource_url.
-                # The key might exist but not be in our cache.
-                self.refresh()
-                try:
-                    return self.data[key]
-                except:
-                    self._known_invalid_keys.append(key)
-                    return default
+            pass
+
+        try:
+            # Next, look in the potentially incomplete local cache
+            return self.data[key]
+        except KeyError:
+            pass
+
+        # Now refresh the object from its resource_url.
+        # The key might exist but not be in our cache.
+        self.refresh()
+
+        try:
+            return self.data[key]
+        except:
+            self._known_invalid_keys.append(key)
+            return default
 
 
 # This is terribly cheesy, but makes the client API more consistent

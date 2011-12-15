@@ -1,7 +1,152 @@
 from discogs_client.exceptions import HTTPError
-from discogs_client.helpers import parse_timestamp, update_qs, omit_none, fetches
+from discogs_client.helpers import parse_timestamp, update_qs, omit_none
 
-class BaseAPIObject(object):
+
+class SimpleDescriptor(object):
+    """
+    An attribute that determines its value using the object's fetch() method.
+
+    If transform is a callable, the value will be passed through transform when
+    read. Useful for strings that should be ints, parsing timestamps, etc.
+
+    Shorthand for:
+
+        @property
+        def foo(self):
+            return self.fetch('foo')
+    """
+    def __init__(self, name, settable=False, transform=None):
+        self.name = name
+        self.settable = settable
+        self.transform = transform
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        value = instance.fetch(self.name)
+        if self.transform:
+            value = self.transform(value)
+        return value
+
+    def __set__(self, instance, value):
+        if self.settable:
+            instance.changes[self.name] = value
+            return
+        raise AttributeError("can't set attribute")
+
+
+class ObjectDescriptor(object):
+    """
+    An attribute that determines its value using the object's fetch() method,
+    and passes the resulting value through an APIObject.
+
+    If optional = True, the value will be None (rather than an APIObject
+    instance) if the key is missing from the response.
+
+    If as_id = True, the value is treated as an ID for the new APIObject rather
+    than a partial dict of the APIObject.
+
+    Shorthand for:
+
+        @property
+        def baz(self):
+            return BazClass(self.client, self.fetch('baz'))
+    """
+    def __init__(self, name, class_name, optional=False, as_id=False):
+        self.name = name
+        self.class_name = class_name
+        self.optional = optional
+        self.as_id = as_id
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        wrapper_class = CLASS_MAP[self.class_name.lower()]
+        response_dict = instance.fetch(self.name)
+        if self.optional and not response_dict:
+            return None
+        if self.as_id:
+            # Response_dict wasn't really a dict. Make it so.
+            response_dict = {'id': response_dict}
+        return wrapper_class(instance.client, response_dict)
+
+    def __set__(self, instance, value):
+        raise AttributeError("can't set attribute")
+
+
+class ListDescriptor(object):
+    """
+    An attribute that determines its value using the object's fetch() method,
+    and passes each item in the resulting list through an APIObject.
+
+    Shorthand for:
+
+        @property
+        def bar(self):
+            return [BarClass(self.client, d) for d in self.fetch('bar', [])]
+    """
+    def __init__(self, name, class_name):
+        self.name = name
+        self.class_name = class_name
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        wrapper_class = CLASS_MAP[self.class_name.lower()]
+        return [wrapper_class(instance.client, d) for d in instance.fetch(self.name, [])]
+
+    def __set__(self, instance, value):
+        raise AttributeError("can't set attribute")
+
+
+class Field(object):
+    """
+    A placeholder for a descriptor. Is transformed into a descriptor by the
+    APIObjectMeta metaclass when the APIObject classes are created.
+    """
+    _descriptor_class = None
+
+    def __init__(self, *args, **kwargs):
+        self.key = None
+        if 'key' in kwargs:
+            self.key = kwargs['key']
+            del kwargs['key']
+
+        self.args = args
+        self.kwargs = kwargs
+
+    def to_descriptor(self, attr_name):
+        return self._descriptor_class(self.key or attr_name, *self.args, **self.kwargs)
+
+
+class SimpleField(Field):
+    """A field that just returns the value of a given JSON key."""
+    _descriptor_class = SimpleDescriptor
+
+
+class ListField(Field):
+    """A field that returns a list of APIObjects."""
+    _descriptor_class = ListDescriptor
+
+
+class ObjectField(Field):
+    """A field that returns a single APIObject."""
+    _descriptor_class = ObjectDescriptor
+
+
+class APIObjectMeta(type):
+    def __new__(cls, name, bases, dict_):
+        for k, v in dict_.iteritems():
+            if isinstance(v, Field):
+                dict_[k] = v.to_descriptor(k)
+        return super(APIObjectMeta, cls).__new__(cls, name, bases, dict_)
+
+
+class APIObject(object):
+    __metaclass__ = APIObjectMeta
+
+
+class PrimaryAPIObject(APIObject):
     """A first-order API object that has a canonical endpoint of its own."""
     def __init__(self, client, dict_):
         self.data = dict_
@@ -55,7 +200,7 @@ class BaseAPIObject(object):
 
 
 # This is terribly cheesy, but makes the client API more consistent
-class SecondaryAPIObject(object):
+class SecondaryAPIObject(APIObject):
     """
     An object that wraps parts of a response and doesn't have its own
     endpoint.
@@ -203,23 +348,21 @@ class MixedPaginatedList(BasePaginatedResponse):
         return CLASS_MAP[item['type']](self.client, item)
 
 
-@fetches(['id', 'name', 'real_name', 'profile', 'data_quality', 'name_variations', 'urls'])
-class Artist(BaseAPIObject):
+class Artist(PrimaryAPIObject):
+    id = SimpleField()
+    name = SimpleField()
+    real_name = SimpleField()
+    profile = SimpleField()
+    data_quality = SimpleField()
+    name_variations = SimpleField()
+    urls = SimpleField()
+    aliases = ListField('Artist')
+    members = ListField('Artist')
+    groups = ListField('Artist')
+
     def __init__(self, client, dict_):
         super(Artist, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/artists/%d' % dict_['id']
-
-    @property
-    def aliases(self):
-        return [Artist(self.client, d) for d in self.fetch('aliases', [])]
-
-    @property
-    def members(self):
-        return [Artist(self.client, d) for d in self.fetch('members', [])]
-
-    @property
-    def groups(self):
-        return [Artist(self.client, d) for d in self.fetch('groups', [])]
 
     @property
     def releases(self):
@@ -229,38 +372,27 @@ class Artist(BaseAPIObject):
         return '<Artist %r %r>' % (self.id, self.name)
 
 
-@fetches([
-    'id', 'title', 'year', 'thumb', 'data_quality', 'status', 'genres',
-    'country', 'notes', 'formats',
-])
-class Release(BaseAPIObject):
+class Release(PrimaryAPIObject):
+    id = SimpleField()
+    title = SimpleField()
+    year = SimpleField()
+    thumb = SimpleField()
+    data_quality = SimpleField()
+    status = SimpleField()
+    genres = SimpleField()
+    country = SimpleField()
+    notes = SimpleField()
+    formats = SimpleField()
+    videos = ListField('Video')
+    tracklist = ListField('Track')
+    artists = ListField('Artist')
+    credits = ListField('Artist', key='extraartists')
+    labels = ListField('Label')
+    companies = ListField('Label')
+
     def __init__(self, client, dict_):
         super(Release, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/releases/%d' % dict_['id']
-
-    @property
-    def videos(self):
-        return [Video(self.client, d) for d in self.fetch('videos', [])]
-
-    @property
-    def tracklist(self):
-        return [Track(self.client, d) for d in self.fetch('tracklist', [])]
-
-    @property
-    def artists(self):
-        return [Artist(self.client, d) for d in self.fetch('artists', [])]
-
-    @property
-    def credits(self):
-        return [Artist(self.client, d) for d in self.fetch('extraartists', [])]
-
-    @property
-    def labels(self):
-        return [Label(self.client, d) for d in self.fetch('labels', [])]
-
-    @property
-    def companies(self):
-        return [Label(self.client, d) for d in self.fetch('companies', [])]
 
     @property
     def master(self):
@@ -274,8 +406,17 @@ class Release(BaseAPIObject):
         return '<Release %r %r>' % (self.id, self.title)
 
 
-@fetches(['id', 'title', 'data_quality', 'styles', 'genres', 'images'])
-class Master(BaseAPIObject):
+class Master(PrimaryAPIObject):
+    id = SimpleField()
+    title = SimpleField()
+    data_quality = SimpleField()
+    styles = SimpleField()
+    genres = SimpleField()
+    images = SimpleField()
+    videos = ListField('Video')
+    tracklist = ListField('Track')
+    main_release = ObjectField('Release', as_id=True)
+
     def __init__(self, client, dict_):
         super(Master, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/masters/%d' % dict_['id']
@@ -284,26 +425,21 @@ class Master(BaseAPIObject):
     def versions(self):
         return PaginatedList(self.client, self.fetch('versions_url'), 'versions', Release)
 
-    @property
-    def videos(self):
-        return [Video(self.client, d) for d in self.fetch('videos', [])]
-
-    @property
-    def main_release(self):
-        return Release(self.client, {'id': self.fetch('main_release')})
-
-    @property
-    def tracklist(self):
-        return [Track(self.client, d) for d in self.fetch('tracklist', [])]
-
     def __repr__(self):
         return '<Master %r %r>' % (self.id, self.title)
 
 
-@fetches([
-    'id', 'name', 'profile', 'urls', 'images', 'contact_info', 'data_quality',
-])
-class Label(BaseAPIObject):
+class Label(PrimaryAPIObject):
+    id = SimpleField()
+    name = SimpleField()
+    profile = SimpleField()
+    urls = SimpleField()
+    images = SimpleField()
+    contact_info = SimpleField()
+    data_quality = SimpleField()
+    sublabels = ListField('Label')
+    parent_label = ObjectField('Label', as_id=True, optional=True)
+
     def __init__(self, client, dict_):
         super(Label, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/labels/%d' % dict_['id']
@@ -312,35 +448,28 @@ class Label(BaseAPIObject):
     def releases(self):
         return PaginatedList(self.client, self.fetch('releases_url'), 'releases', Release)
 
-    @property
-    def sublabels(self):
-        return [Label(self.client, d) for d in self.fetch('sublabels', [])]
-
-    @property
-    def parent_label(self):
-        parent_label_dict = self.fetch('parent_label')
-        if parent_label_dict:
-            return Label(self.client, parent_label_dict)
-        else:
-            return None
-
     def __repr__(self):
         return '<Label %r %r>' % (self.id, self.name)
 
 
-@fetches([
-    'id', 'username', 'releases_contributed', 'num_collection', 'num_wantlist',
-    'num_lists', 'rank', 'rating_avg'
-])
-@fetches(['name', 'profile', 'location', 'home_page'], settable=True)
-class User(BaseAPIObject):
+class User(PrimaryAPIObject):
+    id = SimpleField()
+    username = SimpleField()
+    releases_contributed = SimpleField()
+    num_collection = SimpleField()
+    num_wantlist = SimpleField()
+    num_lists = SimpleField()
+    rank = SimpleField()
+    rating_avg = SimpleField()
+    name = SimpleField(settable=True)
+    profile = SimpleField(settable=True)
+    location = SimpleField(settable=True)
+    home_page = SimpleField(settable=True)
+    registered = SimpleField(transform=parse_timestamp)
+
     def __init__(self, client, dict_):
         super(User, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/users/%s' % dict_['username']
-
-    @property
-    def registered(self):
-        return parse_timestamp(self.fetch('registered'))
 
     @property
     def inventory(self):
@@ -363,15 +492,15 @@ class User(BaseAPIObject):
         return '<User %r %r>' % (self.id, self.username)
 
 
-@fetches(['id'])
-@fetches(['rating', 'notes', 'notes_public'], settable=True)
-class WantlistItem(BaseAPIObject):
+class WantlistItem(PrimaryAPIObject):
+    id = SimpleField()
+    rating = SimpleField(settable=True)
+    notes = SimpleField(settable=True)
+    notes_public = SimpleField(settable=True)
+    release = ObjectField('Release', key='basic_information')
+
     def __init__(self, client, dict_):
         super(WantlistItem, self).__init__(client, dict_)
-
-    @property
-    def release(self):
-        return Release(self.client, self.fetch('basic_information'))
 
     def __repr__(self):
         return '<WantlistItem %r %r>' % (self.id, self.release.title)
@@ -379,21 +508,24 @@ class WantlistItem(BaseAPIObject):
 
 # TODO: folder_id should be a Folder object; needs folder_url
 # TODO: notes should be first-order (somehow); needs resource_url
-@fetches(['id', 'rating', 'folder_id', 'notes'])
-class CollectionItemInstance(BaseAPIObject):
+class CollectionItemInstance(PrimaryAPIObject):
+    id = SimpleField()
+    rating = SimpleField()
+    folder_id = SimpleField()
+    notes = SimpleField()
+    release = ObjectField('Release', key='basic_information')
+
     def __init__(self, client, dict_):
         super(CollectionItemInstance, self).__init__(client, dict_)
-
-    @property
-    def release(self):
-        return Release(self.client, self.fetch('basic_information'))
 
     def __repr__(self):
         return '<CollectionItemInstance %r %r>' % (self.id, self.release.title)
 
 
-@fetches(['id', 'name', 'count'])
-class CollectionFolder(BaseAPIObject):
+class CollectionFolder(PrimaryAPIObject):
+    id = SimpleField()
+    name = SimpleField()
+    count = SimpleField()
     def __init__(self, client, dict_):
         super(CollectionFolder, self).__init__(client, dict_)
 
@@ -406,73 +538,53 @@ class CollectionFolder(BaseAPIObject):
         return '<CollectionFolder %r %r>' % (self.id, self.name)
 
 
-@fetches([
-    'id', 'status', 'allow_offers', 'condition', 'sleeve_condition',
-    'ships_from', 'comments', 'audio',
-])
-class Listing(BaseAPIObject):
+class Listing(PrimaryAPIObject):
+    id = SimpleField()
+    status = SimpleField()
+    allow_offers = SimpleField()
+    condition = SimpleField()
+    sleeve_condition = SimpleField()
+    ships_from = SimpleField()
+    comments = SimpleField()
+    audio = SimpleField()
+    price = ObjectField('Price')
+    release = ObjectField('Release')
+    seller = ObjectField('User')
+    posted = SimpleField(transform=parse_timestamp)
+
     def __init__(self, client, dict_):
         super(Listing, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/marketplace/listings/%d' % dict_['id']
-
-    @property
-    def price(self):
-        return Price(self.client, self.fetch('price'))
-
-    @property
-    def posted(self):
-        return parse_timestamp(self.fetch('posted'))
-
-    @property
-    def release(self):
-        return Release(self.client, self.fetch('release'))
-
-    @property
-    def seller(self):
-        return User(self.client, self.fetch('seller'))
 
     def __repr__(self):
         return '<Listing %r %r>' % (self.id, self.release.data['description'])
 
 
-@fetches([
-    'id', 'next_status', 'shipping_address', 'additional_instructions'
-])
-@fetches(['status'], settable=True)
-class Order(BaseAPIObject):
+class Order(PrimaryAPIObject):
+    id = SimpleField()
+    next_status = SimpleField()
+    shipping_address = SimpleField()
+    additional_instructions = SimpleField()
+    status = SimpleField(settable=True)
+    fee = ObjectField('Price')
+    buyer = ObjectField('User')
+    seller = ObjectField('User')
+    created = SimpleField(transform=parse_timestamp)
+    last_activity = SimpleField(transform=parse_timestamp)
+
     def __init__(self, client, dict_):
         super(Order, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/marketplace/orders/%s' % dict_['id']
 
-    @property
-    def created(self):
-        return parse_timestamp(self.fetch('created'))
-
-    @property
-    def last_activity(self):
-        return parse_timestamp(self.fetch('last_activity'))
-
-    @property
-    def fee(self):
-        return Price(self.client, self.fetch('fee'))
-
+    # Setting shipping is a little weird -- you can't change the
+    # currency, and you use the 'shipping' key instead of 'value'
     @property
     def shipping(self):
         return Price(self.client, self.fetch('shipping'))
 
-    # Setting shipping is a little weird -- you can't change the
-    # currency, and you use the 'shipping' key instead of 'value'
     @shipping.setter
     def shipping(self, value):
         self.changes['shipping'] = value
-
-    @property
-    def buyer(self):
-        return User(self.client, self.fetch('buyer'))
-
-    @property
-    def seller(self):
-        return User(self.client, self.fetch('seller'))
 
     @property
     def messages(self):
@@ -482,59 +594,54 @@ class Order(BaseAPIObject):
         return '<Order %r>' % self.id
 
 
-@fetches(['subject', 'message'])
 class OrderMessage(SecondaryAPIObject):
-    @property
-    def to(self):
-        return User(self.client, self.fetch('to'))
-
-    @property
-    def order(self):
-        return Order(self.client, self.fetch('order'))
-
-    @property
-    def timestamp(self):
-        return parse_timestamp(self.fetch('timestamp'))
+    subject = SimpleField()
+    message = SimpleField()
+    to = ObjectField('User')
+    order = ObjectField('Order')
+    timestamp = SimpleField(transform=parse_timestamp)
 
     def __repr__(self):
         return '<OrderMessage to:%r>' % self.to.username
 
 
-@fetches(['duration', 'position', 'title'])
 class Track(SecondaryAPIObject):
-    @property
-    def artists(self):
-        return [Artist(self.client, d) for d in self.fetch('artists', [])]
-
-    @property
-    def credits(self):
-        return [Artist(self.client, d) for d in self.fetch('extraartists', [])]
+    duration = SimpleField()
+    position = SimpleField()
+    title = SimpleField()
+    artists = ListField('Artist')
+    credits = ListField('Artist', key='extraartists')
 
     def __repr__(self):
         return '<Track %r %r>' % (self.position, self.title)
 
 
-@fetches(['currency', 'value'])
 class Price(SecondaryAPIObject):
+    currency = SimpleField()
+    value = SimpleField()
+
     def __repr__(self):
         return '<Price %r %r>' % (self.value, self.currency)
 
 
-@fetches(['duration', 'embed', 'title', 'description'])
 class Video(SecondaryAPIObject):
-    # The API returns this as 'uri' :\
-    @property
-    def url(self):
-        return self.fetch('uri')
+    duration = SimpleField()
+    embed = SimpleField()
+    title = SimpleField()
+    description = SimpleField()
+    url = SimpleField('uri')
 
     def __repr__(self):
         return '<Video %r>' % (self.title)
 
-
-# Only things that can show up in a MixedPaginatedList need to go here
 CLASS_MAP = {
     'artist': Artist,
     'release': Release,
     'master': Master,
     'label': Label,
+    'price': Price,
+    'video': Video,
+    'track': Track,
+    'user': User,
+    'order': Order,
 }

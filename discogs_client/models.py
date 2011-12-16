@@ -2,7 +2,7 @@ from discogs_client.exceptions import HTTPError
 from discogs_client.helpers import parse_timestamp, update_qs, omit_none
 
 
-class SimpleDescriptor(object):
+class SimpleFieldDescriptor(object):
     """
     An attribute that determines its value using the object's fetch() method.
 
@@ -15,9 +15,9 @@ class SimpleDescriptor(object):
         def foo(self):
             return self.fetch('foo')
     """
-    def __init__(self, name, settable=False, transform=None):
+    def __init__(self, name, writable=False, transform=None):
         self.name = name
-        self.settable = settable
+        self.writable = writable
         self.transform = transform
 
     def __get__(self, instance, owner):
@@ -29,13 +29,13 @@ class SimpleDescriptor(object):
         return value
 
     def __set__(self, instance, value):
-        if self.settable:
+        if self.writable:
             instance.changes[self.name] = value
             return
         raise AttributeError("can't set attribute")
 
 
-class ObjectDescriptor(object):
+class ObjectFieldDescriptor(object):
     """
     An attribute that determines its value using the object's fetch() method,
     and passes the resulting value through an APIObject.
@@ -74,7 +74,7 @@ class ObjectDescriptor(object):
         raise AttributeError("can't set attribute")
 
 
-class ListDescriptor(object):
+class ListFieldDescriptor(object):
     """
     An attribute that determines its value using the object's fetch() method,
     and passes each item in the resulting list through an APIObject.
@@ -121,17 +121,17 @@ class Field(object):
 
 class SimpleField(Field):
     """A field that just returns the value of a given JSON key."""
-    _descriptor_class = SimpleDescriptor
+    _descriptor_class = SimpleFieldDescriptor
 
 
 class ListField(Field):
     """A field that returns a list of APIObjects."""
-    _descriptor_class = ListDescriptor
+    _descriptor_class = ListFieldDescriptor
 
 
 class ObjectField(Field):
     """A field that returns a single APIObject."""
-    _descriptor_class = ObjectDescriptor
+    _descriptor_class = ObjectFieldDescriptor
 
 
 class APIObjectMeta(type):
@@ -494,9 +494,9 @@ class User(PrimaryAPIObject):
 
 class WantlistItem(PrimaryAPIObject):
     id = SimpleField()
-    rating = SimpleField(settable=True)
-    notes = SimpleField(settable=True)
-    notes_public = SimpleField(settable=True)
+    rating = SimpleField(writable=True)
+    notes = SimpleField(writable=True)
+    notes_public = SimpleField(writable=True)
     release = ObjectField('Release', key='basic_information')
 
     def __init__(self, client, dict_):
@@ -526,6 +526,7 @@ class CollectionFolder(PrimaryAPIObject):
     id = SimpleField()
     name = SimpleField()
     count = SimpleField()
+
     def __init__(self, client, dict_):
         super(CollectionFolder, self).__init__(client, dict_)
 
@@ -565,7 +566,7 @@ class Order(PrimaryAPIObject):
     next_status = SimpleField()
     shipping_address = SimpleField()
     additional_instructions = SimpleField()
-    status = SimpleField(settable=True)
+    status = SimpleField(writable=True)
     fee = ObjectField('Price')
     buyer = ObjectField('User')
     seller = ObjectField('User')

@@ -99,6 +99,40 @@ class ListFieldDescriptor(object):
         raise AttributeError("can't set attribute")
 
 
+class ObjectCollectionDescriptor(object):
+    """
+    An attribute that determines its value by fetching a URL to a paginated
+    list of related objects, and passes each item in the resulting list through
+    an APIObject.
+
+    Shorthand for:
+
+        @property
+        def frozzes(self):
+            return PaginatedList(self.client, self.fetch('frozzes_url'), 'frozzes', FrozClass)
+    """
+    def __init__(self, name, class_name, url_key=None, list_class=None):
+        self.name = name
+        self.class_name = class_name
+
+        if url_key is None:
+            url_key = name + '_url'
+        self.url_key = url_key
+
+        if list_class is None:
+            list_class = PaginatedList
+        self.list_class = list_class
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        wrapper_class = CLASS_MAP[self.class_name.lower()]
+        return self.list_class(instance.client, instance.fetch(self.url_key), self.name, wrapper_class)
+
+    def __set__(self, instance, value):
+        raise AttributeError("can't set attribute")
+
+
 class Field(object):
     """
     A placeholder for a descriptor. Is transformed into a descriptor by the
@@ -132,6 +166,11 @@ class ListField(Field):
 class ObjectField(Field):
     """A field that returns a single APIObject."""
     _descriptor_class = ObjectFieldDescriptor
+
+
+class ObjectCollection(Field):
+    """A field that returns a paginated list of APIObjects."""
+    _descriptor_class = ObjectCollectionDescriptor
 
 
 class APIObjectMeta(type):
@@ -416,14 +455,11 @@ class Master(PrimaryAPIObject):
     videos = ListField('Video')
     tracklist = ListField('Track')
     main_release = ObjectField('Release', as_id=True)
+    versions = ObjectCollection('Release')
 
     def __init__(self, client, dict_):
         super(Master, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/masters/%d' % dict_['id']
-
-    @property
-    def versions(self):
-        return PaginatedList(self.client, self.fetch('versions_url'), 'versions', Release)
 
     def __repr__(self):
         return '<Master %r %r>' % (self.id, self.title)
@@ -439,14 +475,11 @@ class Label(PrimaryAPIObject):
     data_quality = SimpleField()
     sublabels = ListField('Label')
     parent_label = ObjectField('Label', as_id=True, optional=True)
+    releases = ObjectCollection('Release')
 
     def __init__(self, client, dict_):
         super(Label, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/labels/%d' % dict_['id']
-
-    @property
-    def releases(self):
-        return PaginatedList(self.client, self.fetch('releases_url'), 'releases', Release)
 
     def __repr__(self):
         return '<Label %r %r>' % (self.id, self.name)
@@ -461,27 +494,21 @@ class User(PrimaryAPIObject):
     num_lists = SimpleField()
     rank = SimpleField()
     rating_avg = SimpleField()
-    name = SimpleField(settable=True)
-    profile = SimpleField(settable=True)
-    location = SimpleField(settable=True)
-    home_page = SimpleField(settable=True)
+    name = SimpleField(writable=True)
+    profile = SimpleField(writable=True)
+    location = SimpleField(writable=True)
+    home_page = SimpleField(writable=True)
     registered = SimpleField(transform=parse_timestamp)
+    inventory = ObjectCollection('Listing', key='listings', url_key='inventory_url')
+    wantlist = ObjectCollection('WantlistItem', key='wants', url_key='wantlist_url', list_class=Wantlist)
 
     def __init__(self, client, dict_):
         super(User, self).__init__(client, dict_)
         self.data['resource_url'] = client._base_url + '/users/%s' % dict_['username']
 
     @property
-    def inventory(self):
-        return PaginatedList(self.client, self.fetch('inventory_url'), 'listings', Listing)
-
-    @property
     def orders(self):
         return PaginatedList(self.client, self.client._base_url + '/marketplace/orders', 'orders', Order)
-
-    @property
-    def wantlist(self):
-        return Wantlist(self.client, self.fetch('wantlist_url'), 'wants', WantlistItem)
 
     @property
     def collection_folders(self):
@@ -572,6 +599,7 @@ class Order(PrimaryAPIObject):
     seller = ObjectField('User')
     created = SimpleField(transform=parse_timestamp)
     last_activity = SimpleField(transform=parse_timestamp)
+    messages = ObjectCollection('OrderMessage', list_class=OrderMessagesList)
 
     def __init__(self, client, dict_):
         super(Order, self).__init__(client, dict_)
@@ -586,10 +614,6 @@ class Order(PrimaryAPIObject):
     @shipping.setter
     def shipping(self, value):
         self.changes['shipping'] = value
-
-    @property
-    def messages(self):
-        return OrderMessagesList(self.client, self.fetch('messages_url'), 'messages', OrderMessage)
 
     def __repr__(self):
         return '<Order %r>' % self.id
@@ -645,4 +669,7 @@ CLASS_MAP = {
     'track': Track,
     'user': User,
     'order': Order,
+    'listing': Listing,
+    'wantlistitem': WantlistItem,
+    'ordermessage': OrderMessage,
 }

@@ -1,5 +1,5 @@
 from discogs_client.exceptions import HTTPError
-from discogs_client.helpers import parse_timestamp, update_qs, omit_none
+from discogs_client.utils import parse_timestamp, update_qs, omit_none
 
 
 class SimpleFieldDescriptor(object):

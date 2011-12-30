@@ -6,7 +6,7 @@ import urlparse
 
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
-from discogs_client.helpers import update_qs
+from discogs_client.utils import update_qs
 
 class Client(object):
     _base_url = 'http://api.discogs.com'

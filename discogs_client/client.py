@@ -79,6 +79,8 @@ class Client(object):
         if self.verbose:
             print ' '.join((method, url))
 
+        self._check_user_agent()
+
         headers = {
             'Accept-Encoding': 'gzip',
             'User-Agent': self.user_agent,

@@ -193,6 +193,15 @@ class PrimaryAPIObject(APIObject):
         self._known_invalid_keys = []
         self.changes = {}
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.id == other.id
+        return NotImplemented
+
+    def __ne__(self, other):
+        equal = self.__eq__(other)
+        return NotImplemented if equal is NotImplemented else not equal
+
     def refresh(self):
         if self.data.get('resource_url'):
             data = self.client._get(self.data['resource_url'])

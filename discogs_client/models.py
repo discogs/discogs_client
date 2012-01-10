@@ -363,10 +363,12 @@ class Wantlist(PaginatedList):
             'rating': rating,
         }
         self.client._put(self.url + '/' + str(release_id), omit_none(data))
+        self._invalidate()
 
     def remove(self, release):
         release_id = release.id if isinstance(release, Release) else release
         self.client._delete(self.url + '/' + str(release_id))
+        self._invalidate()
 
 
 class OrderMessagesList(PaginatedList):
@@ -378,6 +380,7 @@ class OrderMessagesList(PaginatedList):
             'email_seller': email_seller,
         }
         self.client._post(self.url, omit_none(data))
+        self._invalidate()
 
 
 class MixedPaginatedList(BasePaginatedResponse):

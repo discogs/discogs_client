@@ -399,10 +399,10 @@ class MixedPaginatedList(BasePaginatedResponse):
 class Artist(PrimaryAPIObject):
     id = SimpleField()
     name = SimpleField()
-    real_name = SimpleField()
+    real_name = SimpleField(key='realname')
     profile = SimpleField()
     data_quality = SimpleField()
-    name_variations = SimpleField()
+    name_variations = SimpleField(key='namevariations')
     urls = SimpleField()
     aliases = ListField('Artist')
     members = ListField('Artist')
@@ -483,7 +483,7 @@ class Label(PrimaryAPIObject):
     contact_info = SimpleField()
     data_quality = SimpleField()
     sublabels = ListField('Label')
-    parent_label = ObjectField('Label', as_id=True, optional=True)
+    parent_label = ObjectField('Label', optional=True)
     releases = ObjectCollection('Release')
 
     def __init__(self, client, dict_):

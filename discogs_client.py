@@ -292,7 +292,7 @@ class Search(APIBase):
         id = result['title']
         if result['type'] in ('master', 'release'):
             id = result['uri'].split('/')[-1]
-        elif result['type'] == 'artist':
+        elif result['type'] == 'anv':
             return Artist(id, anv=result.get('anv'))
         return _class_from_string(result['type'])(id)
 

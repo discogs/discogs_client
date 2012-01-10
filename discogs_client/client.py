@@ -158,7 +158,7 @@ class Client(object):
         return models.Order(self, {'id': id})
 
     def fee_for(self, price, currency='USD'):
-        resp = self._get(self._base_url + '/marketplace/fee/%f/%s' % (float(price), currency))
+        resp = self._get(self._base_url + '/marketplace/fee/%0.4f/%s' % (float(price), currency))
         return models.Price(self, {'value': resp['value'], 'currency': resp['currency']})
 
     def identity(self):

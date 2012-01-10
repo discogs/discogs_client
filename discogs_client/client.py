@@ -2,11 +2,11 @@ import requests
 import json
 import oauth2
 import urllib
-import urlparse
 
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
 from discogs_client.utils import update_qs
+from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
 
 class Client(object):
     _base_url = 'http://api.discogs.com'
@@ -17,59 +17,42 @@ class Client(object):
     def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_token=None, access_secret=None):
         self.user_agent = user_agent
         self.verbose = False
-        self.authenticated = False
-
-        self._consumer = None
-        self._oauth_client = None
-        self._token = None
 
         if consumer_key and consumer_secret:
-            self._consumer = oauth2.Consumer(consumer_key, consumer_secret)
-
-            if access_token and access_secret:
-                self._token = oauth2.Token(access_token, access_secret)
-                self.authenticated = True
-
-            self._oauth_client = oauth2.Client(self._consumer, self._token)
+            self._fetcher = OAuth2Fetcher(consumer_key, consumer_secret, access_token, access_secret)
+        else:
+            self._fetcher = RequestsFetcher()
 
     def get_authorize_url(self, callback_url=None):
         # Forget existing tokens
-        self._oauth_client = oauth2.Client(self._consumer)
+        self._fetcher.forget_token()
 
         params = {}
         if callback_url:
             params['oauth_callback'] = callback_url
         postdata = urllib.urlencode(params)
 
-        resp, content = self._oauth_client.request(self._request_token_url, 'POST', body=postdata)
-        if resp['status'] != '200':
-            raise HTTPError('Invalid response from request token URL.', int(resp['status']))
-        self._token = dict(urlparse.parse_qsl(content))
+        content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, json=False)
+        if status_code != 200:
+            raise HTTPError('Invalid response from request token URL.', status_code)
 
-        params = {'oauth_token': self._token['oauth_token']}
+        token, secret = self._fetcher.store_token_from_qs(content)
+
+        params = {'oauth_token': token}
         query_string = urllib.urlencode(params)
 
         return '?'.join((self._authorize_url, query_string))
 
     def get_access_token(self, verifier):
-        token = oauth2.Token(
-            self._token['oauth_token'],
-            self._token['oauth_token_secret'],
-        )
-        token.set_verifier(verifier)
-        self._oauth_client = oauth2.Client(self._consumer, token)
+        self._fetcher.set_verifier(verifier)
 
-        resp, content = self._oauth_client.request(self._access_token_url, 'POST')
-        self._token = dict(urlparse.parse_qsl(content))
+        content, status_code = self._fetcher.fetch(self, 'POST', self._access_token_url)
+        if status_code != 200:
+            raise HTTPError('Invalid response from access token URL.', status_code)
 
-        token = oauth2.Token(
-            self._token['oauth_token'],
-            self._token['oauth_token_secret'],
-        )
-        self._oauth_client = oauth2.Client(self._consumer, token)
-        self.authenticated = True
+        token, secret = self._fetcher.store_token_from_qs(content)
 
-        return self._token['oauth_token'], self._token['oauth_token_secret']
+        return token, secret
 
     def _check_user_agent(self):
         if not self.user_agent:
@@ -89,17 +72,7 @@ class Client(object):
         if data:
             headers['Content-Type'] = 'application/json'
 
-        if self.authenticated:
-            if data:
-                body = json.dumps(data)
-                resp, content = self._oauth_client.request(url, method, body, headers=headers)
-            else:
-                resp, content = self._oauth_client.request(url, method, headers=headers)
-            status_code = int(resp['status'])
-        else:
-            response = requests.request(method, url, data=data, headers=headers)
-            content = response.content
-            status_code = response.status_code
+        content, status_code = self._fetcher.fetch(self, method, url, data=data, headers=headers)
 
         if status_code == 204:
             return None

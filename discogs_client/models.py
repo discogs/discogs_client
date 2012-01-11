@@ -141,11 +141,7 @@ class Field(object):
     _descriptor_class = None
 
     def __init__(self, *args, **kwargs):
-        self.key = None
-        if 'key' in kwargs:
-            self.key = kwargs['key']
-            del kwargs['key']
-
+        self.key = kwargs.pop('key', None)
         self.args = args
         self.kwargs = kwargs
 

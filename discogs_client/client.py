@@ -118,6 +118,11 @@ class Client(object):
         return self._request('PUT', url, data)
 
     def search(self, *query, **fields):
+        """
+        Search the Discogs database. Returns a paginated list of objects
+        (Artists, Releases, Masters, and Labels). The keyword arguments to this
+        function are serialized into the request's query string.
+        """
         if query:
             fields['q'] = ' '.join(query)
 
@@ -128,30 +133,39 @@ class Client(object):
         )
 
     def artist(self, id):
+        """Fetch an Artist by ID."""
         return models.Artist(self, {'id': id})
 
     def release(self, id):
+        """Fetch a Release by ID."""
         return models.Release(self, {'id': id})
 
     def master(self, id):
+        """Fetch a Master by ID."""
         return models.Master(self, {'id': id})
 
     def label(self, id):
+        """Fetch a Label by ID."""
         return models.Label(self, {'id': id})
 
     def user(self, username):
+        """Fetch a User by username."""
         return models.User(self, {'username': username})
 
     def listing(self, id):
+        """Fetch a Marketplace Listing by ID."""
         return models.Listing(self, {'id': id})
 
     def order(self, id):
+        """Fetch an Order by ID."""
         return models.Order(self, {'id': id})
 
     def fee_for(self, price, currency='USD'):
+        """Calculate the fee for selling an item on the Marketplace."""
         resp = self._get(self._base_url + '/marketplace/fee/%0.4f/%s' % (float(price), currency))
         return models.Price(self, {'value': resp['value'], 'currency': resp['currency']})
 
     def identity(self):
+        """Return a User object representing the OAuth-authorized user."""
         resp = self._get(self._base_url + '/oauth/identity')
         return models.User(self, resp)

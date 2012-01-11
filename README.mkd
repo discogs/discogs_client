@@ -1,102 +1,93 @@
 # Discogs API Client
 
-This is the official Discogs API client for Python. It enables you to query the
-Discogs database for information on artists, releases, labels, users,
-Marketplace listings, and more. It also supports OAuth 1.0a authorization,
-which allows you to change user data such as profile information, collections
-and wantlists, inventory, and orders.
+This is the official Discogs API client for Python. It enables you to query the Discogs database for information on artists, releases, labels, users, Marketplace listings, and more. It also supports OAuth 1.0a authorization, which allows you to change user data such as profile information, collections and wantlists, inventory, and orders.
 
 ## Installation
 
 Install the client from PyPI using your favorite package manager.
 
-    ```sh
-    $ pip install discogs_client
-    ```
+```sh
+$ pip install discogs_client
+```
 
 ## Quickstart
 
 ### Instantiating the client object
 
-    ```python
-    >>> import discogs_client
-    >>> d = discogs_client.Client('ExampleApplication/0.1')
-    ```
+```python
+>>> import discogs_client
+>>> d = discogs_client.Client('ExampleApplication/0.1')
+```
 
 ### Authorization (optional)
 
 Specify your app's consumer key and secret:
 
-    ```python
-    >>> d.set_consumer_key('key-here', 'secret-here')
-    >>> # Or you can do this when you instantiate the Client
-    ```
+```python
+>>> d.set_consumer_key('key-here', 'secret-here')
+>>> # Or you can do this when you instantiate the Client
+```
 
-Then go through the OAuth 1.0a process. In a web app, we'd specify a
-`callback_url`. In this example, we'll use the OOB flow.
+Then go through the OAuth 1.0a process. In a web app, we'd specify a `callback_url`. In this example, we'll use the OOB flow.
 
-    ```python
-    >>> d.get_authorize_url()
-    ('request-token', 'request-secret', 'authorize-url-here')
-    ```
+```python
+>>> d.get_authorize_url()
+('request-token', 'request-secret', 'authorize-url-here')
+```
     
-The client will hang on to the access token and secret, but in a webapp, you'd
-want to persist those and pass them into a new Client instance on the next
-request.
+The client will hang on to the access token and secret, but in a web app, you'd want to persist those and pass them into a new `Client` instance on the next request.
 
-Next, visit the authorize URL, authenticate as a Discogs user, and get the
-verifier:
+Next, visit the authorize URL, authenticate as a Discogs user, and get the verifier:
 
-    ```python
-    >>> d.get_access_token('verifier-here')
-    ('access-token-here', 'access-secret-here')
-    ```
+```python
+>>> d.get_access_token('verifier-here')
+('access-token-here', 'access-secret-here')
+```
 
 Now you can make requests on behalf of the user.
 
-    ```python
-    >>> me = d.identity()
-    >>> "I'm %s (%s) from %s." % (me.name, me.username, me.location)
-    u"I'm Joe Bloggs (example) from Portland, Oregon."
-    >>> len(me.wantlist)
-    3
-    >>> me.wantlist.add(d.release(5))
-    >>> len(me.wantlist)
-    4
-    ```
+```python
+>>> me = d.identity()
+>>> "I'm %s (%s) from %s." % (me.name, me.username, me.location)
+u"I'm Joe Bloggs (example) from Portland, Oregon."
+>>> len(me.wantlist)
+3
+>>> me.wantlist.add(d.release(5))
+>>> len(me.wantlist)
+4
+```
 
 ### Fetching data
 
 Use methods on the client to fetch objects. You can search for objects:
 
-    ```python
-    >>> results = d.search('Stockholm By Night', type='release')
-    >>> results.pages
-    1
-    >>> artist = results[0].artists[0]
-    >>> artist.name
-    u'Persuader, The'
-    ```
+```python
+>>> results = d.search('Stockholm By Night', type='release')
+>>> results.pages
+1
+>>> artist = results[0].artists[0]
+>>> artist.name
+u'Persuader, The'
+```
 
 Or fetch them by ID:
 
-    ```python
-    >>> artist.id
-    1
-    >>> artist == d.artist(1)
-    True
-    ```
+```python
+>>> artist.id
+1
+>>> artist == d.artist(1)
+True
+```
 
 You can drill down as far as you like.
 
-    ```python
-    >>> releases = d.search('Bit Shifter', type='artist')[0].releases[1].\
-    ...     versions[0].labels[0].releases
-    >>> len(releases)
-    134
-    ```
+```python
+>>> releases = d.search('Bit Shifter', type='artist')[0].releases[1].\
+...     versions[0].labels[0].releases
+>>> len(releases)
+134
+```
 
 ### For more information
 
-Check the included documentation, or just spin up a REPL and use `dir()` on
-things :)
+Check the included documentation, or just spin up a REPL and use `dir()` on things :)

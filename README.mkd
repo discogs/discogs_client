@@ -28,22 +28,24 @@ Install the client from PyPI using your favorite package manager.
 Specify your app's consumer key and secret:
 
     ```python
-    >>> d = discogs_client.Client(
-    ...     'UserAgentString/0.1',
-    ...     'consumer-key-here',
-    ...     'consumer-secret-here'
-    ... )
+    >>> d.set_consumer_key('key-here', 'secret-here')
+    >>> # Or you can do this when you instantiate the Client
     ```
 
 Then go through the OAuth 1.0a process. In a web app, we'd specify a
-`callback_url`; here we'll use the OOB flow.
+`callback_url`. In this example, we'll use the OOB flow.
 
     ```python
     >>> d.get_authorize_url()
-    'http://www.discogs.com/oauth/authorize?...'
+    ('request-token', 'request-secret', 'authorize-url-here')
     ```
     
-Visit the URL, authorize, and get the verifier:
+The client will hang on to the access token and secret, but in a webapp, you'd
+want to persist those and pass them into a new Client instance on the next
+request.
+
+Next, visit the authorize URL, authenticate as a Discogs user, and get the
+verifier:
 
     ```python
     >>> d.get_access_token('verifier-here')

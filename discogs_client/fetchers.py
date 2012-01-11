@@ -40,14 +40,14 @@ class RequestsFetcher(Fetcher):
 
 class OAuth2Fetcher(Fetcher):
     """Fetches via HTTP + OAuth 1.0a from the Discogs API."""
-    def __init__(self, consumer_key, consumer_secret, access_token=None, access_secret=None):
+    def __init__(self, consumer_key, consumer_secret, token=None, secret=None):
         consumer = oauth2.Consumer(consumer_key, consumer_secret)
-        token = None
+        token_obj = None
 
-        if access_token and access_secret:
-            token = oauth2.Token(access_token, access_secret)
+        if token and secret:
+            token_obj = oauth2.Token(token, secret)
 
-        self.oauth_client = oauth2.Client(consumer, token)
+        self.oauth_client = oauth2.Client(consumer, token_obj)
 
     def store_token_from_qs(self, query_string):
         token_dict = dict(urlparse.parse_qsl(query_string))

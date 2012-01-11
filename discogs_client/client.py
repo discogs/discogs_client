@@ -14,16 +14,31 @@ class Client(object):
     _authorize_url = 'http://www.discogs.com/oauth/authorize'
     _access_token_url = 'http://api.discogs.com/oauth/access_token'
 
-    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, access_token=None, access_secret=None):
+    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None):
+        """An interface to the Discogs API."""
         self.user_agent = user_agent
         self.verbose = False
+        self._fetcher = RequestsFetcher()
 
         if consumer_key and consumer_secret:
-            self._fetcher = OAuth2Fetcher(consumer_key, consumer_secret, access_token, access_secret)
-        else:
-            self._fetcher = RequestsFetcher()
+            self.set_consumer_key(consumer_key, consumer_secret)
+            if token and secret:
+                self.set_token(token, secret)
+
+    def set_consumer_key(self, consumer_key, consumer_secret):
+        self._fetcher = OAuth2Fetcher(consumer_key, consumer_secret)
+
+    def set_token(self, token, secret):
+        try:
+            self._fetcher.store_token(token, secret)
+        except AttributeError:
+            raise ConfigurationError('You must first set the consumer key and secret.')
 
     def get_authorize_url(self, callback_url=None):
+        """
+        Returns a tuple of (<access_token>, <access_secret>, <authorize_url>).
+        Send a Discogs user to the authorize URL to get the verifier for the access token.
+        """
         # Forget existing tokens
         self._fetcher.forget_token()
 
@@ -41,9 +56,12 @@ class Client(object):
         params = {'oauth_token': token}
         query_string = urllib.urlencode(params)
 
-        return '?'.join((self._authorize_url, query_string))
+        return (token, secret, '?'.join((self._authorize_url, query_string)))
 
     def get_access_token(self, verifier):
+        """
+        Uses the verifier to exchange a request token for an access token.
+        """
         self._fetcher.set_verifier(verifier)
 
         content, status_code = self._fetcher.fetch(self, 'POST', self._access_token_url)

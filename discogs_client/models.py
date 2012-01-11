@@ -267,6 +267,9 @@ class BasePaginatedResponse(object):
         self._pages = {}
         self._per_page = 50
         self._list_key = 'items'
+        self._sort_key = None
+        self._sort_order = 'asc'
+        self._filters = {}
 
     @property
     def per_page(self):
@@ -283,11 +286,38 @@ class BasePaginatedResponse(object):
         self._num_items = None
 
     def _load_pagination_info(self):
-        data = self.client._get(
-            update_qs(self.url, {'page': 1, 'per_page': self._per_page})
-        )
+        data = self.client._get(self._url_for_page(1))
         self._num_pages = data['pagination']['pages']
         self._num_items = data['pagination']['items']
+
+    def _url_for_page(self, page):
+        base_qs = {
+            'page': page,
+            'per_page': self._per_page,
+        }
+
+        if self._sort_key is not None:
+            base_qs.update({
+                'sort': self._sort_key,
+                'sort_order': self._sort_order,
+            })
+
+        base_qs.update(self._filters)
+
+        return update_qs(self.url, base_qs)
+
+    def sort(self, key, order='asc'):
+        if not order in ('asc', 'desc'):
+            raise ValueError("Order must be one of 'asc', 'desc'")
+        self._sort_key = key
+        self._sort_order = order
+        self._invalidate()
+        return self
+
+    def filter(self, **kwargs):
+        self._filters = kwargs
+        self._invalidate()
+        return self
 
     @property
     def pages(self):
@@ -303,9 +333,7 @@ class BasePaginatedResponse(object):
 
     def page(self, index):
         if not index in self._pages:
-            data = self.client._get(
-                update_qs(self.url, {'page': index, 'per_page': self._per_page})
-            )
+            data = self.client._get(self._url_for_page(index))
             self._pages[index] = [
                 self._transform(item) for item in data[self._list_key]
             ]

@@ -608,6 +608,7 @@ class Order(PrimaryAPIObject):
     created = SimpleField(transform=parse_timestamp)
     last_activity = SimpleField(transform=parse_timestamp)
     messages = ObjectCollection('OrderMessage', list_class=OrderMessagesList)
+    items = ListField('Listing')
 
     def __init__(self, client, dict_):
         super(Order, self).__init__(client, dict_)

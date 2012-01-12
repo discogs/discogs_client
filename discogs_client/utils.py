@@ -14,4 +14,5 @@ def update_qs(url, params):
 
 
 def omit_none(dict_):
+    """Removes any key from a dict that has a value of None."""
     return dict((k, v) for k, v in dict_.iteritems() if v is not None)

@@ -185,7 +185,7 @@ Get a list of `Label`s representing sublabels associated with this `Label`:
 Get the `Label`'s parent label, if it exists:
 
     >>> label.parent_label
-    ...
+    <Label "Warp Records Limited">
 
 ### Possible `data` keys
 

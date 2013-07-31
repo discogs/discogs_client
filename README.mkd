@@ -1,5 +1,8 @@
 # Discogs API Client
 
+[![Build Status](https://travis-ci.org/discogs/discogs_client.png?branch=master)](https://travis-ci.org/discogs/discogs_client)
+[![Coverage Status](https://coveralls.io/repos/discogs/discogs_client/badge.png)](https://coveralls.io/r/discogs/discogs_client)
+
 This is the official Discogs API client for Python. You can use it to query the
 Discogs music database for metadata on artists, releases, and more.
 
@@ -185,7 +188,7 @@ Get a list of `Label`s representing sublabels associated with this `Label`:
 Get the `Label`'s parent label, if it exists:
 
     >>> label.parent_label
-    ...
+    <Label "Warp Records Limited">
 
 ### Possible `data` keys
 

@@ -43,11 +43,12 @@ class Client(object):
         self._fetcher.forget_token()
 
         params = {}
+        params['User-Agent'] = self.user_agent
         if callback_url:
             params['oauth_callback'] = callback_url
         postdata = urllib.urlencode(params)
 
-        content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, json=False)
+        content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
         if status_code != 200:
             raise HTTPError('Invalid response from request token URL.', status_code)
 

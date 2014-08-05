@@ -65,9 +65,9 @@ class OAuth2Fetcher(Fetcher):
     def set_verifier(self, verifier):
         self.oauth_client.token.set_verifier(verifier)
 
-    def fetch(self, client, method, url, data=None, headers=None, json=True):
+    def fetch(self, client, method, url, data=None, headers=None, json_format=True):
         if data:
-            body = json.dumps(data) if json else data
+            body = json.dumps(data) if json_format else data
             resp, content = self.oauth_client.request(url, method, body, headers=headers)
         else:
             resp, content = self.oauth_client.request(url, method, headers=headers)

@@ -65,7 +65,10 @@ class Client(object):
         """
         self._fetcher.set_verifier(verifier)
 
-        content, status_code = self._fetcher.fetch(self, 'POST', self._access_token_url)
+        params = {}
+        params['User-Agent'] = self.user_agent
+
+        content, status_code = self._fetcher.fetch(self, 'POST', self._access_token_url, headers=params)
         if status_code != 200:
             raise HTTPError('Invalid response from access token URL.', status_code)
 

@@ -427,6 +427,7 @@ class Artist(PrimaryAPIObject):
     id = SimpleField()
     name = SimpleField()
     real_name = SimpleField(key='realname')
+    images = SimpleField()
     profile = SimpleField()
     data_quality = SimpleField()
     name_variations = SimpleField(key='namevariations')

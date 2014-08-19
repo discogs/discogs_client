@@ -88,6 +88,120 @@ You can drill down as far as you like.
 134
 ```
 
+## Artist
+
+Query for an artist using the artist's name:
+
+    >>> artist = d.artist(956139)
+    >>> print artist
+    <Artist "...">
+    >>> 'name' in artist.data.keys()
+    True
+
+### Special properties
+
+Get a list of `Artist`s representing this artist's aliases:
+
+    >>> artist.aliases
+    [...]
+
+Get a list of `Release`s by this artist by page number:
+
+    >>> artist.releases.page(1)
+    [...]
+
+## Release
+
+Query for a release using its Discogs ID:
+
+    >>> release = d.release(221824)
+
+### Special properties
+
+Get the title of this `Release`:
+
+    >>> release.title
+    u'...'
+
+Get a list of all `Artist`s associated with this `Release`:
+
+    >>> release.artists
+    [<Artist "...">]
+
+Get the tracklist for this `Release`:
+
+    >>> release.tracklist
+    [...]
+
+Get the `MasterRelease` for this `Release`:
+
+    >>> release.master
+    <MasterRelease "...">
+
+Get a list of all `Label`s for this `Release`:
+
+    >>> release.labels
+    [...]
+
+## MasterRelease
+
+Query for a master release using its Discogs ID:
+
+    >>> master_release = d.master(120735)
+
+### Special properties
+
+Get the key `Release` for this `MasterRelease`:
+
+    >>> master_release.main_release
+    <Release "...">
+
+Get the title of this `MasterRelease`:
+
+    >>> master_release.title
+    u'...'
+    >>> master_release.title == master_release.main_release.title
+    True
+
+Get a list of `Release`s representing other versions of this `MasterRelease` by page number:
+
+    >>> master_release.versions.page(1)
+    [...]
+
+Get the tracklist for this `MasterRelease`:
+
+    >>> master_release.tracklist
+    [...]
+
+## Label
+
+Query for a label using the label's name:
+
+    >>> label = d.label(6170)
+
+### Special properties
+
+Get a list of `Release`s from this `Label` by page number:
+
+    >>> label.releases.page(1)
+    [...]
+
+Get a list of `Label`s representing sublabels associated with this `Label`:
+
+    >>> label.sublabels
+    [...]
+
+Get the `Label`'s parent label, if it exists:
+
+    >>> label.parent_label
+    <Label "Warp Records Limited">
+
+
+## Contributing
+1. Fork this repo
+2. Create a feature branch
+3. Open a pull-request
+
 ### For more information
 
 Check the included documentation, or just spin up a REPL and use `dir()` on things :)

@@ -2,6 +2,9 @@
 
 This is the official Discogs API client for Python. It enables you to query the Discogs database for information on artists, releases, labels, users, Marketplace listings, and more. It also supports OAuth 1.0a authorization, which allows you to change user data such as profile information, collections and wantlists, inventory, and orders.
 
+[![Build Status](https://travis-ci.org/discogs/discogs_client.png?branch=master)](https://travis-ci.org/discogs/discogs_client)
+[![Coverage Status](https://coveralls.io/repos/discogs/discogs_client/badge.png)](https://coveralls.io/r/discogs/discogs_client)
+
 ## Installation
 
 Install the client from PyPI using your favorite package manager.

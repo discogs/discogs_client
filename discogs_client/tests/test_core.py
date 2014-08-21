@@ -10,17 +10,20 @@ class CoreTestCase(DiscogsClientTestCase):
         self.d.artist(1).name
 
         bad_client = Client('')
-        with self.assertRaises(ConfigurationError) as cm:
-            bad_client.artist(1).name
 
-        self.assertIn('User-Agent', str(cm.exception))
+        self.assertRaises(ConfigurationError, lambda: bad_client.artist(1).name)
+
+        try:
+            bad_client.artist(1).name
+        except ConfigurationError as e:
+            self.assertTrue('User-Agent' in str(e))
 
     def test_caching(self):
         """Only perform a fetch when requesting missing data"""
         a = self.d.artist(1)
 
         self.assertEqual(a.id, 1)
-        self.assertIsNone(self.d._fetcher.last_request)
+        self.assertTrue(self.d._fetcher.last_request is None)
 
         self.assertEqual(a.name, 'Persuader, The')
         self.assertGot('/artists/1')
@@ -31,7 +34,7 @@ class CoreTestCase(DiscogsClientTestCase):
         # Get a key that's not in our cache
         a.fetch('blorf')
         self.assertEqual(len(self.d._fetcher.requests), 2)
-        self.assertIn('blorf', a._known_invalid_keys)
+        self.assertTrue('blorf' in a._known_invalid_keys)
 
         # Now we know artists don't have blorves
         a.fetch('blorf')
@@ -53,7 +56,7 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_transform_datetime(self):
         """String timestamps are converted to datetimes"""
         registered = self.d.user('example').registered
-        self.assertIsInstance(registered, datetime)
+        self.assertTrue(isinstance(registered, datetime))
 
     def test_object_field(self):
         """APIObjects can have APIObjects as properties"""
@@ -62,14 +65,16 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_read_only_simple_field(self):
         """Can't write to a SimpleField when writable=False"""
         u = self.d.user('example')
-        with self.assertRaises(AttributeError):
+        def fail():
             u.rank = 9001
+        self.assertRaises(AttributeError, fail)
 
     def test_read_only_object_field(self):
         """Can't write to an ObjectField"""
         m = self.d.master(4242)
-        with self.assertRaises(AttributeError):
+        def fail():
             m.main_release = 'lol!'
+        self.assertRaises(AttributeError, fail)
 
     def test_pagination(self):
         """PaginatedLists are parsed correctly, indexable, and iterable"""
@@ -82,19 +87,21 @@ class CoreTestCase(DiscogsClientTestCase):
         self.assertEqual(len(results), 57)
         self.assertEqual(len(results.page(1)), 50)
 
-        with self.assertRaises(HTTPError) as cm:
-            results.page(42)
-        self.assertEqual(cm.exception.status_code, 404)
+        self.assertRaises(HTTPError, lambda: results.page(42))
 
-        with self.assertRaises(IndexError):
-            results[3141592]
+        try:
+            results.page(42)
+        except HTTPError as e:
+            self.assertEqual(e.status_code, 404)
+
+        self.assertRaises(IndexError, lambda: results[3141592])
 
         self.assertEqual(results[0].id, 20209)
-        self.assertIn(self.d.release(20209), results)
+        self.assertTrue(self.d.release(20209) in results)
 
         # Changing pagination settings invalidates the cache
         results.per_page = 10
-        self.assertIsNone(results._num_pages)
+        self.assertTrue(results._num_pages is None)
 
 def suite():
     suite = unittest.TestSuite()

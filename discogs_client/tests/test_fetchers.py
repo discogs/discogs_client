@@ -7,15 +7,15 @@ class FetcherTestCase(DiscogsClientTestCase):
         """Client can fetch responses with MemoryFetcher"""
         self.m.artist(1)
 
-        with self.assertRaises(HTTPError) as cm:
+        self.assertRaises(HTTPError, lambda: self.m._get('/500'))
+
+        try:
             self.m._get('/500')
+        except HTTPError as e:
+            self.assertEqual(e.status_code, 500)
 
-        self.assertEqual(cm.exception.status_code, 500)
-
-        with self.assertRaises(HTTPError):
-            self.m.release(1).title
-
-        self.assertIsNone(self.m._get('/204'))
+        self.assertRaises(HTTPError, lambda: self.m.release(1).title)
+        self.assertTrue(self.m._get('/204') is None)
 
 
 def suite():

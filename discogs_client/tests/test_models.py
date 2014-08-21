@@ -28,8 +28,8 @@ class ModelsTestCase(DiscogsClientTestCase):
     def test_search(self):
         results = self.d.search('trash80')
         self.assertEqual(len(results), 13)
-        self.assertIsInstance(results[0], Artist)
-        self.assertIsInstance(results[1], Release)
+        self.assertTrue(isinstance(results[0], Artist))
+        self.assertTrue(isinstance(results[1], Release))
 
     def test_fee(self):
         fee = self.d.fee_for(20.5, currency='EUR')
@@ -38,29 +38,29 @@ class ModelsTestCase(DiscogsClientTestCase):
 
     def test_invalid_artist(self):
         """Invalid artist raises HTTPError"""
-        with self.assertRaises(HTTPError):
-            self.d.artist(0).name
+        self.assertRaises(HTTPError, lambda: self.d.artist(0).name)
 
     def test_invalid_release(self):
         """Invalid release raises HTTPError"""
-        with self.assertRaises(HTTPError):
-            self.d.release(0).title
+        self.assertRaises(HTTPError, lambda: self.d.release(0).title)
 
     def test_http_error(self):
         """HTTPError provides useful information"""
-        with self.assertRaises(HTTPError) as cm:
-            self.d.artist(0).name
+        self.assertRaises(HTTPError, lambda: self.d.artist(0).name)
 
-        self.assertEqual(cm.exception.status_code, 404)
-        self.assertEqual('404: Resource not found.', str(cm.exception))
+        try:
+            self.d.artist(0).name
+        except HTTPError as e:
+            self.assertEqual(e.status_code, 404)
+            self.assertEqual('404: Resource not found.', str(e))
 
     def test_parent_label(self):
         """Test parent_label / sublabels relationship"""
         l = self.d.label(1)
         l2 = self.d.label(31405)
 
-        self.assertIsNone(l.parent_label)
-        self.assertIn(l2, l.sublabels)
+        self.assertTrue(l.parent_label is None)
+        self.assertTrue(l2 in l.sublabels)
         self.assertEqual(l2.parent_label, l)
 
     def test_master_versions(self):
@@ -70,11 +70,11 @@ class ModelsTestCase(DiscogsClientTestCase):
         v = m.versions
 
         self.assertEqual(len(v), 2)
-        self.assertIn(r, v)
+        self.assertTrue(r in v)
         self.assertEqual(r.master, m)
 
         r2 = self.d.release(3329867)
-        self.assertIsNone(r2.master)
+        self.assertTrue(r2.master is None)
 
     def test_user_writable(self):
         """User profile can be updated"""
@@ -87,8 +87,8 @@ class ModelsTestCase(DiscogsClientTestCase):
 
         new_home_page = 'http://www.discogs.com'
         u.home_page = new_home_page
-        self.assertIn('home_page', u.changes)
-        self.assertNotIn('profile', u.changes)
+        self.assertTrue('home_page' in u.changes)
+        self.assertFalse('profile' in u.changes)
 
         u.save()
 

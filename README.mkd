@@ -1,56 +1,101 @@
 # Discogs API Client
 
+This is the official Discogs API client for Python. It enables you to query the Discogs database for information on artists, releases, labels, users, Marketplace listings, and more. It also supports OAuth 1.0a authorization, which allows you to change user data such as profile information, collections and wantlists, inventory, and orders.
+
 [![Build Status](https://travis-ci.org/discogs/discogs_client.png?branch=master)](https://travis-ci.org/discogs/discogs_client)
 [![Coverage Status](https://coveralls.io/repos/discogs/discogs_client/badge.png)](https://coveralls.io/r/discogs/discogs_client)
-
-This is the official Discogs API client for Python. You can use it to query the
-Discogs music database for metadata on artists, releases, and more.
 
 ## Installation
 
 Install the client from PyPI using your favorite package manager.
 
-    $ pip install discogs-client
+```sh
+$ pip install discogs_client
+```
 
-## Usage
+## Quickstart
 
-### Setup
+### Instantiating the client object
 
-    >>> import discogs_client as discogs
+```python
+>>> import discogs_client
+>>> d = discogs_client.Client('ExampleApplication/0.1')
+```
 
-You also need to set the User-Agent of your client to something unique before you can make requests -- preferably something that follows [RFC 1945](http://tools.ietf.org/html/rfc1945#section-3.7). **Don't just use one of these examples!** Make it your own; this will help us get in touch with you if your client is behaving incorrectly.
+### Authorization (optional)
 
-    >>> discogs.user_agent = 'AwesomeDiscogsBrowser/0.1 +http://adb.example.com'
-    >>> discogs.user_agent = 'LibraryMetadataEnhancer/0.3 +http://example.com/lime'
-    >>> discogs.user_agent = 'MyDiscogsClient/1.0 +http://mydiscogsclient.org'
+Specify your app's consumer key and secret:
 
-### Getting data
+```python
+>>> d.set_consumer_key('key-here', 'secret-here')
+>>> # Or you can do this when you instantiate the Client
+```
 
-There are five classes you can use to fetch data from the API:
+Then go through the OAuth 1.0a process. In a web app, we'd specify a `callback_url`. In this example, we'll use the OOB flow.
 
- * `Artist`
- * `Release`
- * `MasterRelease`
- * `Label`
- * and `Search`.
+```python
+>>> d.get_authorize_url()
+('request-token', 'request-secret', 'authorize-url-here')
+```
+    
+The client will hang on to the access token and secret, but in a web app, you'd want to persist those and pass them into a new `Client` instance on the next request.
 
-Whereever possible, the Discogs client tries to convert API responses into these
-objects. This enables you to drill down into the object graph as far as you
-like.
+Next, visit the authorize URL, authenticate as a Discogs user, and get the verifier:
 
-For example, `Artist`s have two convenience properties -- `aliases` and
-`releases` -- which return `Artist` and `Release` objects. To get at the
-remainder of an object's metadata, use the `data` dictionary, which contains the
-raw information received from the API.
+```python
+>>> d.get_access_token('verifier-here')
+('access-token-here', 'access-secret-here')
+```
 
-    >>> discogs.Artist('Aphex Twin').data['realname']
-    u'...'
+Now you can make requests on behalf of the user.
+
+```python
+>>> me = d.identity()
+>>> "I'm %s (%s) from %s." % (me.name, me.username, me.location)
+u"I'm Joe Bloggs (example) from Portland, Oregon."
+>>> len(me.wantlist)
+3
+>>> me.wantlist.add(d.release(5))
+>>> len(me.wantlist)
+4
+```
+
+### Fetching data
+
+Use methods on the client to fetch objects. You can search for objects:
+
+```python
+>>> results = d.search('Stockholm By Night', type='release')
+>>> results.pages
+1
+>>> artist = results[0].artists[0]
+>>> artist.name
+u'Persuader, The'
+```
+
+Or fetch them by ID:
+
+```python
+>>> artist.id
+1
+>>> artist == d.artist(1)
+True
+```
+
+You can drill down as far as you like.
+
+```python
+>>> releases = d.search('Bit Shifter', type='artist')[0].releases[1].\
+...     versions[0].labels[0].releases
+>>> len(releases)
+134
+```
 
 ## Artist
-    
+
 Query for an artist using the artist's name:
 
-    >>> artist = discogs.Artist('Aphex Twin')
+    >>> artist = d.artist(956139)
     >>> print artist
     <Artist "...">
     >>> 'name' in artist.data.keys()
@@ -63,26 +108,17 @@ Get a list of `Artist`s representing this artist's aliases:
     >>> artist.aliases
     [...]
 
-Get a list of `Release`s by this artist:
+Get a list of `Release`s by this artist by page number:
 
-    >>> artist.releases
+    >>> artist.releases.page(1)
     [...]
-
-### Possible `data` keys
-
-* images
-* members
-* name
-* namevariations
-* realname
-* urls
 
 ## Release
 
 Query for a release using its Discogs ID:
 
-    >>> release = discogs.Release(1)
-    
+    >>> release = d.release(221824)
+
 ### Special properties
 
 Get the title of this `Release`:
@@ -110,48 +146,29 @@ Get a list of all `Label`s for this `Release`:
     >>> release.labels
     [...]
 
-### Possible `data` keys
-
-* country
-* formats
-* genres
-* id
-* images
-* notes
-* released_formatted
-* released
-* status
-* styles
-* year
-
 ## MasterRelease
 
 Query for a master release using its Discogs ID:
 
-    >>> master_release = discogs.MasterRelease(5427)
+    >>> master_release = d.master(120735)
 
 ### Special properties
 
 Get the key `Release` for this `MasterRelease`:
 
-    >>> master_release.key_release
+    >>> master_release.main_release
     <Release "...">
 
 Get the title of this `MasterRelease`:
 
     >>> master_release.title
     u'...'
-    >>> master_release.title == master_release.key_release.title
+    >>> master_release.title == master_release.main_release.title
     True
 
-Get a list of all `Artist`s associated with this `MasterRelease`:
+Get a list of `Release`s representing other versions of this `MasterRelease` by page number:
 
-    >>> master_release.artists
-    [<Artist "...">]
-
-Get a list of `Release`s representing other versions of this `MasterRelease`:
-
-    >>> master_release.versions
+    >>> master_release.versions.page(1)
     [...]
 
 Get the tracklist for this `MasterRelease`:
@@ -159,25 +176,17 @@ Get the tracklist for this `MasterRelease`:
     >>> master_release.tracklist
     [...]
 
-### Possible `data` keys
-
- * genres
- * id
- * images
- * styles
- * year
-
 ## Label
 
 Query for a label using the label's name:
 
-    >>> label = discogs.Label('Warp Records')
+    >>> label = d.label(6170)
 
 ### Special properties
 
-Get a list of `Release`s from this `Label`:
+Get a list of `Release`s from this `Label` by page number:
 
-    >>> label.releases
+    >>> label.releases.page(1)
     [...]
 
 Get a list of `Label`s representing sublabels associated with this `Label`:
@@ -190,29 +199,12 @@ Get the `Label`'s parent label, if it exists:
     >>> label.parent_label
     <Label "Warp Records Limited">
 
-### Possible `data` keys
 
-* contactinfo
-* images
-* name
-* profile
-* urls
+## Contributing
+1. Fork this repo
+2. Create a feature branch
+3. Open a pull-request
 
-## Search
+### For more information
 
-To search the database, pass your query into a `Search`:
-
-    >>> s = discogs.Search('autechre')
-
-There may be results that exactly match your query:
-
-    >>> s.exactresults
-    [...]
-    
-Any other results are paginated:
-
-    >>> s.results()
-    [...]
-    >>> s.results(page=2)
-    [...]
-
+Check the included documentation, or just spin up a REPL and use `dir()` on things :)

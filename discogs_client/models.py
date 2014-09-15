@@ -457,6 +457,7 @@ class Release(PrimaryAPIObject):
     data_quality = SimpleField()
     status = SimpleField()
     genres = SimpleField()
+    images = SimpleField()
     country = SimpleField()
     notes = SimpleField()
     formats = SimpleField()

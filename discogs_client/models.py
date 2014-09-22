@@ -461,6 +461,7 @@ class Release(PrimaryAPIObject):
     country = SimpleField()
     notes = SimpleField()
     formats = SimpleField()
+    styles = SimpleField()
     url = SimpleField('uri')
     videos = ListField('Video')
     tracklist = ListField('Track')

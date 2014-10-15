@@ -9,10 +9,10 @@ from discogs_client.utils import update_qs
 from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
 
 class Client(object):
-    _base_url = 'http://api.discogs.com'
-    _request_token_url = 'http://api.discogs.com/oauth/request_token'
+    _base_url = 'https://api.discogs.com'
+    _request_token_url = 'https://api.discogs.com/oauth/request_token'
     _authorize_url = 'http://www.discogs.com/oauth/authorize'
-    _access_token_url = 'http://api.discogs.com/oauth/access_token'
+    _access_token_url = 'https://api.discogs.com/oauth/access_token'
 
     def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None):
         """An interface to the Discogs API."""

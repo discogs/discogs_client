@@ -307,7 +307,7 @@ class BasePaginatedResponse(object):
         return update_qs(self.url, base_qs)
 
     def sort(self, key, order='asc'):
-        if not order in ('asc', 'desc'):
+        if order not in ('asc', 'desc'):
             raise ValueError("Order must be one of 'asc', 'desc'")
         self._sort_key = key
         self._sort_order = order
@@ -332,7 +332,7 @@ class BasePaginatedResponse(object):
         return self._num_items
 
     def page(self, index):
-        if not index in self._pages:
+        if index not in self._pages:
             data = self.client._get(self._url_for_page(index))
             self._pages[index] = [
                 self._transform(item) for item in data[self._list_key]

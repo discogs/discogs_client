@@ -2,6 +2,7 @@ import unittest
 from discogs_client.tests import DiscogsClientTestCase
 from discogs_client.exceptions import HTTPError
 
+
 class FetcherTestCase(DiscogsClientTestCase):
     def test_memory_fetcher(self):
         """Client can fetch responses with MemoryFetcher"""

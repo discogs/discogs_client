@@ -27,4 +27,3 @@ setup(
             'discogs_client',
             ],
         )
-

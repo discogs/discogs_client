@@ -1,7 +1,8 @@
 import unittest
 from discogs_client.models import Artist, Release
 from discogs_client.tests import DiscogsClientTestCase
-from discogs_client.exceptions import ConfigurationError, HTTPError
+from discogs_client.exceptions import HTTPError
+
 
 class ModelsTestCase(DiscogsClientTestCase):
     def test_artist(self):
@@ -79,7 +80,7 @@ class ModelsTestCase(DiscogsClientTestCase):
     def test_user_writable(self):
         """User profile can be updated"""
         u = self.d.user('example')
-        u.name # Trigger a fetch
+        u.name  # Trigger a fetch
 
         method, url, data, headers = self.d._fetcher.requests[0]
         self.assertEqual(method, 'GET')

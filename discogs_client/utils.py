@@ -1,6 +1,7 @@
 from datetime import datetime
 from urllib2 import quote
 
+
 def parse_timestamp(timestamp):
     """Convert an ISO 8601 timestamp into a datetime."""
     return datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S')

@@ -4,6 +4,7 @@ from discogs_client.tests import DiscogsClientTestCase
 from discogs_client.exceptions import ConfigurationError, HTTPError
 from datetime import datetime
 
+
 class CoreTestCase(DiscogsClientTestCase):
     def test_user_agent(self):
         """User-Agent should be properly set"""
@@ -44,7 +45,7 @@ class CoreTestCase(DiscogsClientTestCase):
         """APIObjects of the same class are equal if their IDs are"""
         a1 = self.d.artist(1)
         a1_ = self.d.artist(1)
-        a2 = self.d.artist(2)
+        self.d.artist(2)
 
         r1 = self.d.release(1)
 
@@ -65,6 +66,7 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_read_only_simple_field(self):
         """Can't write to a SimpleField when writable=False"""
         u = self.d.user('example')
+
         def fail():
             u.rank = 9001
         self.assertRaises(AttributeError, fail)
@@ -72,6 +74,7 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_read_only_object_field(self):
         """Can't write to an ObjectField"""
         m = self.d.master(4242)
+
         def fail():
             m.main_release = 'lol!'
         self.assertRaises(AttributeError, fail)
@@ -102,6 +105,7 @@ class CoreTestCase(DiscogsClientTestCase):
         # Changing pagination settings invalidates the cache
         results.per_page = 10
         self.assertTrue(results._num_pages is None)
+
 
 def suite():
     suite = unittest.TestSuite()

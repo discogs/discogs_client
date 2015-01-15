@@ -4,6 +4,7 @@ import json
 import urlparse
 import os
 
+
 class Fetcher(object):
     """
     Base class for Fetchers, which wrap and normalize the APIs of various HTTP

@@ -1,12 +1,11 @@
-import requests
 import json
-import oauth2
 import urllib
 
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
 from discogs_client.utils import update_qs
 from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
+
 
 class Client(object):
     _base_url = 'https://api.discogs.com'

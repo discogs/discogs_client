@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+from six import with_metaclass
+
 from discogs_client.exceptions import HTTPError
 from discogs_client.utils import parse_timestamp, update_qs, omit_none
 
@@ -179,8 +181,8 @@ class APIObjectMeta(type):
         return super(APIObjectMeta, cls).__new__(cls, name, bases, dict_)
 
 
-class APIObject(object):
-    __metaclass__ = APIObjectMeta
+class APIObject(with_metaclass(APIObjectMeta, object)):
+    pass
 
 
 class PrimaryAPIObject(APIObject):

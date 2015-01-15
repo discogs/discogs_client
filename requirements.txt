@@ -1,3 +1,4 @@
+six
 PyYAML==3.10
 coverage==3.6
 coveralls==0.2

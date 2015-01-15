@@ -22,6 +22,7 @@ setup(
         install_requires=[
             'requests',
             'oauth2',
+            'six',
             ],
         packages=[
             'discogs_client',

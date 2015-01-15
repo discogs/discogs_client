@@ -1,7 +1,12 @@
 from __future__ import print_function
 
 import json
-import urllib
+try:
+    # python2
+    from urllib import urlencode
+except ImportError:
+    # python3
+    from urllib.parse import urlencode
 
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
@@ -47,7 +52,7 @@ class Client(object):
         params['User-Agent'] = self.user_agent
         if callback_url:
             params['oauth_callback'] = callback_url
-        postdata = urllib.urlencode(params)
+        postdata = urlencode(params)
 
         content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
         if status_code != 200:
@@ -56,7 +61,7 @@ class Client(object):
         token, secret = self._fetcher.store_token_from_qs(content)
 
         params = {'oauth_token': token}
-        query_string = urllib.urlencode(params)
+        query_string = urlencode(params)
 
         return (token, secret, '?'.join((self._authorize_url, query_string)))
 

@@ -1,5 +1,10 @@
 from datetime import datetime
-from urllib2 import quote
+try:
+    # python2
+    from urllib2 import quote
+except ImportError:
+    # python3
+    from urllib.parse import quote
 
 
 def parse_timestamp(timestamp):

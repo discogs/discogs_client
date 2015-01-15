@@ -1,8 +1,13 @@
 import requests
 import oauth2
 import json
-import urlparse
 import os
+try:
+    # python2
+    from urlparse import parse_qsl
+except ImportError:
+    # python3
+    from urllib.parse import parse_qsl
 
 
 class Fetcher(object):
@@ -51,7 +56,7 @@ class OAuth2Fetcher(Fetcher):
         self.oauth_client = oauth2.Client(consumer, token_obj)
 
     def store_token_from_qs(self, query_string):
-        token_dict = dict(urlparse.parse_qsl(query_string))
+        token_dict = dict(parse_qsl(query_string))
         token = token_dict['oauth_token']
         secret = token_dict['oauth_token_secret']
         self.store_token(token, secret)

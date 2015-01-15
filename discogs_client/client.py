@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import json
 import urllib
 
@@ -81,7 +83,7 @@ class Client(object):
 
     def _request(self, method, url, data=None):
         if self.verbose:
-            print ' '.join((method, url))
+            print(' '.join((method, url)))
 
         self._check_user_agent()
 

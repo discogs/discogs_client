@@ -171,7 +171,7 @@ class ObjectCollection(Field):
 
 class APIObjectMeta(type):
     def __new__(cls, name, bases, dict_):
-        for k, v in dict_.iteritems():
+        for k, v in dict_.items():
             if isinstance(v, Field):
                 dict_[k] = v.to_descriptor(k)
         return super(APIObjectMeta, cls).__new__(cls, name, bases, dict_)
@@ -348,7 +348,7 @@ class BasePaginatedResponse(object):
 
         try:
             page = self.page(page_index)
-        except HTTPError, e:
+        except HTTPError as e:
             if e.status_code == 404:
                 raise IndexError(e.msg)
             else:
@@ -360,7 +360,7 @@ class BasePaginatedResponse(object):
         return self.count
 
     def __iter__(self):
-        for i in xrange(1, self.pages + 1):
+        for i in range(1, self.pages + 1):
             page = self.page(i)
             for item in page:
                 yield item

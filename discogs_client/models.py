@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 from discogs_client.exceptions import HTTPError
 from discogs_client.utils import parse_timestamp, update_qs, omit_none
 
@@ -343,7 +345,7 @@ class BasePaginatedResponse(object):
         return item
 
     def __getitem__(self, index):
-        page_index = index / self.per_page + 1
+        page_index = index // self.per_page + 1
         offset = index % self.per_page
 
         try:

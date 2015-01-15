@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import unittest
 from discogs_client import Client
 from discogs_client.tests import DiscogsClientTestCase
@@ -29,7 +31,7 @@ class CoreTestCase(DiscogsClientTestCase):
         self.assertEqual(a.name, 'Persuader, The')
         self.assertGot('/artists/1')
 
-        self.assertEqual(a.real_name, u'Jesper Dahlb\u00e4ck')
+        self.assertEqual(a.real_name, 'Jesper Dahlb\u00e4ck')
         self.assertEqual(len(self.d._fetcher.requests), 1)
 
         # Get a key that's not in our cache

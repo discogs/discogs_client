@@ -24,3 +24,5 @@ def suite():
     suite = unittest.TestLoader().loadTestsFromTestCase(FetcherTestCase)
     return suite
 
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

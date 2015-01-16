@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import requests
-import oauth2
+from requests.api import request
+from oauthlib import oauth1
 import json
 import os
 try:
@@ -49,13 +50,8 @@ class RequestsFetcher(Fetcher):
 class OAuth2Fetcher(Fetcher):
     """Fetches via HTTP + OAuth 1.0a from the Discogs API."""
     def __init__(self, consumer_key, consumer_secret, token=None, secret=None):
-        consumer = oauth2.Consumer(consumer_key, consumer_secret)
-        token_obj = None
-
-        if token and secret:
-            token_obj = oauth2.Token(token, secret)
-
-        self.oauth_client = oauth2.Client(consumer, token_obj)
+        self.client = oauth1.Client(consumer_key, client_secret=consumer_secret)
+        self.store_token(token, secret)
 
     def store_token_from_qs(self, query_string):
         token_dict = dict(parse_qsl(query_string))
@@ -65,21 +61,22 @@ class OAuth2Fetcher(Fetcher):
         return token, secret
 
     def forget_token(self):
-        self.oauth_client.token = None
+        self.store_token(None, None)
 
     def store_token(self, token, secret):
-        self.oauth_client.token = oauth2.Token(token, secret)
+        self.client.resource_owner_key = token
+        self.client.resource_owner_secret = secret
 
     def set_verifier(self, verifier):
-        self.oauth_client.token.set_verifier(verifier)
+        self.client.verifier = verifier
 
     def fetch(self, client, method, url, data=None, headers=None, json_format=True):
-        if data:
-            body = json.dumps(data) if json_format else data
-            resp, content = self.oauth_client.request(url, method, body, headers=headers)
-        else:
-            resp, content = self.oauth_client.request(url, method, headers=headers)
-        return content, int(resp['status'])
+        body = json.dumps(data) if json_format and data else data
+        uri, headers, body = self.client.sign(url, http_method=method,
+                                              body=data, headers=headers)
+
+        resp = request(method, uri, headers=headers, data=body)
+        return resp.content, resp.status_code
 
 
 class FilesystemFetcher(Fetcher):

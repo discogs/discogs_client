@@ -14,8 +14,10 @@ class UtilsTestCase(DiscogsClientTestCase):
         self.assertEqual(u('http://example.com?foo=bar', {'foo': 'baz'}), 'http://example.com?foo=bar&foo=baz')
         # be careful for dict iteration order is not deterministic
         result = u('http://example.com?c=3&a=yep', {'a': 1, 'b': '1'})
-        self.assertIn(result, ('http://example.com?c=3&a=yep&a=1&b=1',
-                               'http://example.com?c=3&a=yep&b=1&a=1'))
+        try:
+            self.assertEqual(result, 'http://example.com?c=3&a=yep&a=1&b=1')
+        except AssertionError:
+            self.assertEqual(result, 'http://example.com?c=3&a=yep&b=1&a=1')
 
     def test_omit_none(self):
         o = utils.omit_none

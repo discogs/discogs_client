@@ -50,6 +50,7 @@ class Client(object):
 
         params = {}
         params['User-Agent'] = self.user_agent
+        params['Content-Type'] = 'application/x-www-form-urlencoded'
         if callback_url:
             params['oauth_callback'] = callback_url
         postdata = urlencode(params)

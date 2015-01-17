@@ -114,8 +114,8 @@ class ModelsTestCase(DiscogsClientTestCase):
 
         # Stub out expected responses
         self.m._fetcher.fetcher.responses = {
-            '/users/example/wants/5': ('{"id": 5}', 201),
-            '/users/example/wants/1': ('', 204),
+            '/users/example/wants/5': (b'{"id": 5}', 201),
+            '/users/example/wants/1': (b'', 204),
         }
 
         # Now bind the user to the memory client

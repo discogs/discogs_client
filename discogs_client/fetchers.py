@@ -21,8 +21,14 @@ class Fetcher(object):
     (It's a slightly leaky abstraction designed to make testing easier.)
     """
     def fetch(self, client, method, url, data=None, headers=None, json=True):
-        # Should return (content, status_code)
-        raise NotImplemented
+        """Fetch the given request
+
+        Returns
+        -------
+        content : str (python2) or bytes (python3)
+        status_code : int
+        """
+        raise NotImplementedError()
 
 
 class LoggingDelegator(object):
@@ -81,7 +87,7 @@ class OAuth2Fetcher(Fetcher):
 
 class FilesystemFetcher(Fetcher):
     """Fetches from a directory of files."""
-    default_response = json.dumps({'message': 'Resource not found.'}), 404
+    default_response = json.dumps({'message': 'Resource not found.'}).encode('utf8'), 404
 
     def __init__(self, base_path):
         self.base_path = base_path
@@ -97,7 +103,7 @@ class FilesystemFetcher(Fetcher):
         path = os.path.join(self.base_path, base_name)
         try:
             with open(path, 'r') as f:
-                content = f.read()
+                content = f.read().encode('utf8')  # return bytes not unicode
             return content, 200
         except:
             return self.default_response
@@ -105,7 +111,7 @@ class FilesystemFetcher(Fetcher):
 
 class MemoryFetcher(Fetcher):
     """Fetches from a dict of URL -> (content, status_code)."""
-    default_response = json.dumps({'message': 'Resource not found.'}), 404
+    default_response = json.dumps({'message': 'Resource not found.'}).encode('utf8'), 404
 
     def __init__(self, responses):
         self.responses = responses

@@ -106,7 +106,7 @@ class Client(object):
         if status_code == 204:
             return None
 
-        body = json.loads(content)
+        body = json.loads(content.decode('utf8'))
 
         if 200 <= status_code < 300:
             return body

@@ -5,6 +5,7 @@ from discogs_client import Client
 from discogs_client.fetchers import LoggingDelegator, FilesystemFetcher, \
     MemoryFetcher
 
+
 class DiscogsClientTestCase(unittest.TestCase):
     def setUp(self):
 
@@ -18,9 +19,9 @@ class DiscogsClientTestCase(unittest.TestCase):
 
         # Memory client
         responses = {
-            '/artists/1': ('{"id": 1, "name": "Badger"}', 200),
-            '/500': ('{"message": "mushroom"}', 500),
-            '/204': ('', 204),
+            '/artists/1': (b'{"id": 1, "name": "Badger"}', 200),
+            '/500': (b'{"message": "mushroom"}', 500),
+            '/204': (b'', 204),
         }
         self.m = Client('ua')
         self.m._base_url = ''
@@ -39,6 +40,7 @@ class DiscogsClientTestCase(unittest.TestCase):
         self.assertEqual(method, 'POST')
         self.assertEqual(url, assert_url)
         self.assertEqual(data, json.dumps(assert_data))
+
 
 def suite():
     from discogs_client.tests import test_core, test_models, test_fetchers

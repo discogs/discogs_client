@@ -61,8 +61,8 @@ class OAuth2Fetcher(Fetcher):
 
     def store_token_from_qs(self, query_string):
         token_dict = dict(parse_qsl(query_string))
-        token = token_dict['oauth_token']
-        secret = token_dict['oauth_token_secret']
+        token = token_dict[b'oauth_token'].decode('utf8')
+        secret = token_dict[b'oauth_token_secret'].decode('utf8')
         self.store_token(token, secret)
         return token, secret
 

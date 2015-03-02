@@ -19,6 +19,9 @@ class UtilsTestCase(DiscogsClientTestCase):
         except AssertionError:
             self.assertEqual(result, 'http://example.com?c=3&a=yep&b=1&a=1')
 
+        self.assertEqual(u('http://example.com', {'a': 't\xe9st'}),
+                         'http://example.com?a=t%C3%A9st')
+
     def test_omit_none(self):
         o = utils.omit_none
         self.assertEqual(o({

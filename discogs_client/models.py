@@ -385,7 +385,7 @@ class Wantlist(PaginatedList):
     def add(self, release, notes=None, notes_public=None, rating=None):
         release_id = release.id if isinstance(release, Release) else release
         data = {
-            'release_id': release_id,
+            'release_id': str(release_id),
             'notes': notes,
             'notes_public': notes_public,
             'rating': rating,

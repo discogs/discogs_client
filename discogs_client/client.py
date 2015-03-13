@@ -72,8 +72,6 @@ class Client(object):
         Uses the verifier to exchange a request token for an access token.
         """
         if isinstance(verifier, bytes):
-            warnings.warn("Got bytes for verifier: {!r}. "
-                          "Pass an unicode".format(verifier), stacklevel=2)
             verifier = verifier.decode('utf8')
 
         self._fetcher.set_verifier(verifier)

@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import unittest
 from discogs_client.tests import DiscogsClientTestCase
 from discogs_client.exceptions import HTTPError
+
 
 class FetcherTestCase(DiscogsClientTestCase):
     def test_memory_fetcher(self):
@@ -23,3 +26,5 @@ def suite():
     suite = unittest.TestLoader().loadTestsFromTestCase(FetcherTestCase)
     return suite
 
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

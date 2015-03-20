@@ -1,12 +1,19 @@
-import requests
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import warnings
 import json
-import oauth2
-import urllib
+try:
+    # python2
+    from urllib import urlencode
+except ImportError:
+    # python3
+    from urllib.parse import urlencode
 
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError
 from discogs_client.utils import update_qs
 from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
+
 
 class Client(object):
     _base_url = 'https://api.discogs.com'
@@ -44,9 +51,10 @@ class Client(object):
 
         params = {}
         params['User-Agent'] = self.user_agent
+        params['Content-Type'] = 'application/x-www-form-urlencoded'
         if callback_url:
             params['oauth_callback'] = callback_url
-        postdata = urllib.urlencode(params)
+        postdata = urlencode(params)
 
         content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
         if status_code != 200:
@@ -55,7 +63,7 @@ class Client(object):
         token, secret = self._fetcher.store_token_from_qs(content)
 
         params = {'oauth_token': token}
-        query_string = urllib.urlencode(params)
+        query_string = urlencode(params)
 
         return (token, secret, '?'.join((self._authorize_url, query_string)))
 
@@ -63,6 +71,9 @@ class Client(object):
         """
         Uses the verifier to exchange a request token for an access token.
         """
+        if isinstance(verifier, bytes):
+            verifier = verifier.decode('utf8')
+
         self._fetcher.set_verifier(verifier)
 
         params = {}
@@ -82,7 +93,7 @@ class Client(object):
 
     def _request(self, method, url, data=None):
         if self.verbose:
-            print ' '.join((method, url))
+            print(' '.join((method, url)))
 
         self._check_user_agent()
 
@@ -92,14 +103,14 @@ class Client(object):
         }
 
         if data:
-            headers['Content-Type'] = 'application/json'
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
         content, status_code = self._fetcher.fetch(self, method, url, data=data, headers=headers)
 
         if status_code == 204:
             return None
 
-        body = json.loads(content)
+        body = json.loads(content.decode('utf8'))
 
         if 200 <= status_code < 300:
             return body

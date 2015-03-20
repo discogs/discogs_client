@@ -1,3 +1,7 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+from six import with_metaclass
+
 from discogs_client.exceptions import HTTPError
 from discogs_client.utils import parse_timestamp, update_qs, omit_none
 
@@ -171,14 +175,14 @@ class ObjectCollection(Field):
 
 class APIObjectMeta(type):
     def __new__(cls, name, bases, dict_):
-        for k, v in dict_.iteritems():
+        for k, v in dict_.items():
             if isinstance(v, Field):
                 dict_[k] = v.to_descriptor(k)
         return super(APIObjectMeta, cls).__new__(cls, name, bases, dict_)
 
 
-class APIObject(object):
-    __metaclass__ = APIObjectMeta
+class APIObject(with_metaclass(APIObjectMeta, object)):
+    pass
 
 
 class PrimaryAPIObject(APIObject):
@@ -307,7 +311,7 @@ class BasePaginatedResponse(object):
         return update_qs(self.url, base_qs)
 
     def sort(self, key, order='asc'):
-        if not order in ('asc', 'desc'):
+        if order not in ('asc', 'desc'):
             raise ValueError("Order must be one of 'asc', 'desc'")
         self._sort_key = key
         self._sort_order = order
@@ -332,7 +336,7 @@ class BasePaginatedResponse(object):
         return self._num_items
 
     def page(self, index):
-        if not index in self._pages:
+        if index not in self._pages:
             data = self.client._get(self._url_for_page(index))
             self._pages[index] = [
                 self._transform(item) for item in data[self._list_key]
@@ -343,12 +347,12 @@ class BasePaginatedResponse(object):
         return item
 
     def __getitem__(self, index):
-        page_index = index / self.per_page + 1
+        page_index = index // self.per_page + 1
         offset = index % self.per_page
 
         try:
             page = self.page(page_index)
-        except HTTPError, e:
+        except HTTPError as e:
             if e.status_code == 404:
                 raise IndexError(e.msg)
             else:
@@ -360,7 +364,7 @@ class BasePaginatedResponse(object):
         return self.count
 
     def __iter__(self):
-        for i in xrange(1, self.pages + 1):
+        for i in range(1, self.pages + 1):
             page = self.page(i)
             for item in page:
                 yield item
@@ -381,7 +385,7 @@ class Wantlist(PaginatedList):
     def add(self, release, notes=None, notes_public=None, rating=None):
         release_id = release.id if isinstance(release, Release) else release
         data = {
-            'release_id': release_id,
+            'release_id': str(release_id),
             'notes': notes,
             'notes_public': notes_public,
             'rating': rating,

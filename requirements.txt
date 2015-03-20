@@ -1,7 +1,8 @@
+six
 PyYAML==3.10
 coverage==3.6
 coveralls==0.2
 docopt==0.6.1
 requests==1.2.3
-oauth2==1.5.211
+oauthlib==0.7.2
 sh==1.08

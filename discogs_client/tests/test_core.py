@@ -1,8 +1,11 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import unittest
 from discogs_client import Client
 from discogs_client.tests import DiscogsClientTestCase
 from discogs_client.exceptions import ConfigurationError, HTTPError
 from datetime import datetime
+
 
 class CoreTestCase(DiscogsClientTestCase):
     def test_user_agent(self):
@@ -28,7 +31,7 @@ class CoreTestCase(DiscogsClientTestCase):
         self.assertEqual(a.name, 'Persuader, The')
         self.assertGot('/artists/1')
 
-        self.assertEqual(a.real_name, u'Jesper Dahlb\u00e4ck')
+        self.assertEqual(a.real_name, 'Jesper Dahlb\u00e4ck')
         self.assertEqual(len(self.d._fetcher.requests), 1)
 
         # Get a key that's not in our cache
@@ -44,7 +47,7 @@ class CoreTestCase(DiscogsClientTestCase):
         """APIObjects of the same class are equal if their IDs are"""
         a1 = self.d.artist(1)
         a1_ = self.d.artist(1)
-        a2 = self.d.artist(2)
+        self.d.artist(2)
 
         r1 = self.d.release(1)
 
@@ -65,6 +68,7 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_read_only_simple_field(self):
         """Can't write to a SimpleField when writable=False"""
         u = self.d.user('example')
+
         def fail():
             u.rank = 9001
         self.assertRaises(AttributeError, fail)
@@ -72,6 +76,7 @@ class CoreTestCase(DiscogsClientTestCase):
     def test_read_only_object_field(self):
         """Can't write to an ObjectField"""
         m = self.d.master(4242)
+
         def fail():
             m.main_release = 'lol!'
         self.assertRaises(AttributeError, fail)
@@ -103,7 +108,11 @@ class CoreTestCase(DiscogsClientTestCase):
         results.per_page = 10
         self.assertTrue(results._num_pages is None)
 
+
 def suite():
     suite = unittest.TestSuite()
     suite = unittest.TestLoader().loadTestsFromTestCase(CoreTestCase)
     return suite
+
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

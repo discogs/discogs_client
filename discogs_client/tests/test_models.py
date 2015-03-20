@@ -1,7 +1,10 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import unittest
 from discogs_client.models import Artist, Release
 from discogs_client.tests import DiscogsClientTestCase
-from discogs_client.exceptions import ConfigurationError, HTTPError
+from discogs_client.exceptions import HTTPError
+
 
 class ModelsTestCase(DiscogsClientTestCase):
     def test_artist(self):
@@ -79,7 +82,7 @@ class ModelsTestCase(DiscogsClientTestCase):
     def test_user_writable(self):
         """User profile can be updated"""
         u = self.d.user('example')
-        u.name # Trigger a fetch
+        u.name  # Trigger a fetch
 
         method, url, data, headers = self.d._fetcher.requests[0]
         self.assertEqual(method, 'GET')
@@ -111,8 +114,8 @@ class ModelsTestCase(DiscogsClientTestCase):
 
         # Stub out expected responses
         self.m._fetcher.fetcher.responses = {
-            '/users/example/wants/5': ('{"id": 5}', 201),
-            '/users/example/wants/1': ('', 204),
+            '/users/example/wants/5': (b'{"id": 5}', 201),
+            '/users/example/wants/1': (b'', 204),
         }
 
         # Now bind the user to the memory client
@@ -148,3 +151,6 @@ def suite():
     suite = unittest.TestSuite()
     suite = unittest.TestLoader().loadTestsFromTestCase(ModelsTestCase)
     return suite
+
+if __name__ == '__main__':
+    unittest.main(defaultTest='suite')

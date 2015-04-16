@@ -177,7 +177,7 @@ class Client(object):
 
     def fee_for(self, price, currency='USD'):
         """Calculate the fee for selling an item on the Marketplace."""
-        resp = self._get(self._base_url + '/marketplace/fee/%0.4f/%s' % (float(price), currency))
+        resp = self._get('{0}/marketplace/fee/{1:.4f}/{2}'.format(self._base_url, price, currency))
         return models.Price(self, {'value': resp['value'], 'currency': resp['currency']})
 
     def identity(self):

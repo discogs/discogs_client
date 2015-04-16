@@ -23,3 +23,10 @@ class HTTPError(DiscogsAPIError):
 
     def __str__(self):
         return self.msg
+
+
+class AuthorizationError(HTTPError):
+    """The server rejected the client's credentials."""
+    def __init__(self, message, code, response):
+        super(AuthorizationError, self).__init__(message, code)
+        self.msg = '%s Response: %s' % (self.msg, repr(response))

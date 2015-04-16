@@ -10,7 +10,7 @@ except ImportError:
     from urllib.parse import urlencode
 
 from discogs_client import models
-from discogs_client.exceptions import ConfigurationError, HTTPError
+from discogs_client.exceptions import ConfigurationError, HTTPError, AuthorizationError
 from discogs_client.utils import update_qs
 from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
 
@@ -58,7 +58,7 @@ class Client(object):
 
         content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
         if status_code != 200:
-            raise HTTPError('Invalid response from request token URL.', status_code)
+            raise AuthorizationError('Could not get request token.', status_code, content)
 
         token, secret = self._fetcher.store_token_from_qs(content)
 

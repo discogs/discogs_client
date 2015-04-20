@@ -51,7 +51,7 @@ Now you can make requests on behalf of the user.
 
 ```python
 >>> me = d.identity()
->>> "I'm %s (%s) from %s." % (me.name, me.username, me.location)
+>>> "I'm {0} ({1}) from {2}.".format(me.name, me.username, me.location)
 u"I'm Joe Bloggs (example) from Portland, Oregon."
 >>> len(me.wantlist)
 3

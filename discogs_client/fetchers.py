@@ -94,6 +94,7 @@ class FilesystemFetcher(Fetcher):
 
     def fetch(self, client, method, url, data=None, headers=None, json=True):
         url = url.replace(client._base_url, '')
+        url = url.replace('?', '_')  # this fixes Issue 37
 
         if json:
             base_name = ''.join((url[1:], '.json'))

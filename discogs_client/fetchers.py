@@ -110,7 +110,7 @@ class FilesystemFetcher(Fetcher):
             path = os.path.join(self.base_path, base_name)
 
         try:
-            path = path.replace('?', '_')  # this fixes Issue 37
+            path = path.replace('?', '_')  # '?' is illegal in file names on Windows
             with open(path, 'r') as f:
                 content = f.read().encode('utf8')  # return bytes not unicode
             return content, 200
@@ -118,7 +118,8 @@ class FilesystemFetcher(Fetcher):
             return self.default_response
 
     def check_alternate_params(self, base_name, json):
-        """ parse_qs() result is non-deterministic - a different file might be
+        """
+        parse_qs() result is non-deterministic - a different file might be
         requested, making the tests fail randomly, depending on the order of parameters in the query.
         This fixes it by checking for matching file names with a different permutations of the parameters.
         """

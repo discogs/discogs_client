@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
-
 import requests
 from requests.api import request
 from oauthlib import oauth1
 import json
 import os
+import re
 try:
     # python2
     from urlparse import parse_qsl
@@ -88,6 +88,7 @@ class OAuth2Fetcher(Fetcher):
 class FilesystemFetcher(Fetcher):
     """Fetches from a directory of files."""
     default_response = json.dumps({'message': 'Resource not found.'}).encode('utf8'), 404
+    path_with_params = re.compile('(?P<dir>(\w+/)+)(?P<query>\w+)\?(?P<params>.*)')
 
     def __init__(self, base_path):
         self.base_path = base_path
@@ -101,12 +102,54 @@ class FilesystemFetcher(Fetcher):
             base_name = url[1:]
 
         path = os.path.join(self.base_path, base_name)
+
+        # The exact path might not exist, but check for files with different
+        # permutations of query parameters.
+        if not os.path.exists(path):
+            base_name = self.check_alternate_params(base_name, json)
+            path = os.path.join(self.base_path, base_name)
+
         try:
+            path = path.replace('?', '_')  # '?' is illegal in file names on Windows
             with open(path, 'r') as f:
                 content = f.read().encode('utf8')  # return bytes not unicode
             return content, 200
         except:
             return self.default_response
+
+    def check_alternate_params(self, base_name, json):
+        """
+        parse_qs() result is non-deterministic - a different file might be
+        requested, making the tests fail randomly, depending on the order of parameters in the query.
+        This fixes it by checking for matching file names with a different permutations of the parameters.
+        """
+        match = self.path_with_params.match(base_name)
+
+        # No parameters in query - no match. Nothing to do.
+        if not match:
+            return base_name
+
+        ext = '.json' if json else ''
+
+        # The base name consists of one or more path elements (directories),
+        # a query (discogs.com endpoint), query parameters, and possibly an extension like 'json'.
+        # Extract these.
+        base_dir = os.path.join(self.base_path, match.group('dir'))
+        query = match.group('query')  # we'll need this to only check relevant filenames
+        params_str = match.group('params')[:-len(ext)]  # strip extension if any
+        params = set(params_str.split('&'))
+
+        # List files that match the same query, possibly with different parameters
+        filenames = [f for f in os.listdir(base_dir) if f.startswith(query)]
+        for f in filenames:
+            # Strip the query, the '?' sign (or its replacement) and the extension, if any
+            params2_str = f[len(query) + 1:-len(ext)]
+            params2 = set(params2_str.split('&'))
+            if params == params2:
+                return base_name.replace(params_str, params2_str)
+
+        # No matching alternatives found - revert to original.
+        return base_name
 
 
 class MemoryFetcher(Fetcher):

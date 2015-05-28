@@ -70,7 +70,7 @@ u"I'm Joe Bloggs (example) from Portland, Oregon."
 
 This is one of the simplest ways to authenticate and become able to perform requests requiring authentication, such as search (see below). The downside is you'll be limited to the information only your user can see (ie: no request on behalf of others).
 
-For this, you'll need to generate a user-token from your settings/developer section in discogs webpage.
+For this, you'll need to generate a user-token from your settings/developer section in Discogs website.
 
 ```python
 >>> d = discogs_client.Client('ExampleApplication/0.1', user_token="my_user_token")

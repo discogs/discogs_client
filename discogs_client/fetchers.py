@@ -53,6 +53,17 @@ class RequestsFetcher(Fetcher):
         return resp.content, resp.status_code
 
 
+class UserTokenRequestsFetcher(Fetcher):
+    """Fetches via HTTP from the Discogs API using user_token authentication"""
+    def __init__(self, user_token):
+        self.user_token = user_token
+
+    def fetch(self, client, method, url, data=None, headers=None, json=True):
+        resp = requests.request(method, url, params={'token':self.user_token},
+                                data=data, headers=headers)
+        return resp.content, resp.status_code
+
+
 class OAuth2Fetcher(Fetcher):
     """Fetches via HTTP + OAuth 1.0a from the Discogs API."""
     def __init__(self, consumer_key, consumer_secret, token=None, secret=None):

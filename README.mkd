@@ -24,7 +24,13 @@ $ pip install discogs_client
 
 ### Authorization (optional)
 
-Specify your app's consumer key and secret:
+There's a couple of different authorization methods you can chose from depending on your requirements.
+
+#### OAuth authentication ####
+
+This method will allow your application to make requests on behalf of any user which logs in.
+
+For this, specify your app's consumer key and secret:
 
 ```python
 >>> d.set_consumer_key('key-here', 'secret-here')
@@ -58,6 +64,16 @@ u"I'm Joe Bloggs (example) from Portland, Oregon."
 >>> me.wantlist.add(d.release(5))
 >>> len(me.wantlist)
 4
+```
+
+#### User-token authentication ####
+
+This is one of the simplest ways to authenticate and become able to perform requests requiring authentication, such as search (see below). The downside is you'll be limited to the information only your user can see (ie: no request on behalf of others).
+
+For this, you'll need to generate a user-token from your settings/developer section in Discogs website.
+
+```python
+>>> d = discogs_client.Client('ExampleApplication/0.1', user_token="my_user_token")
 ```
 
 ### Fetching data

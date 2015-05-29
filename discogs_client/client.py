@@ -12,7 +12,7 @@ except ImportError:
 from discogs_client import models
 from discogs_client.exceptions import ConfigurationError, HTTPError, AuthorizationError
 from discogs_client.utils import update_qs
-from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher
+from discogs_client.fetchers import RequestsFetcher, OAuth2Fetcher, UserTokenRequestsFetcher
 
 
 class Client(object):
@@ -21,7 +21,7 @@ class Client(object):
     _authorize_url = 'https://www.discogs.com/oauth/authorize'
     _access_token_url = 'https://api.discogs.com/oauth/access_token'
 
-    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None):
+    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None, user_token=None):
         """An interface to the Discogs API."""
         self.user_agent = user_agent
         self.verbose = False
@@ -31,6 +31,8 @@ class Client(object):
             self.set_consumer_key(consumer_key, consumer_secret)
             if token and secret:
                 self.set_token(token, secret)
+        elif user_token is not None:
+            self._fetcher = UserTokenRequestsFetcher(user_token)
 
     def set_consumer_key(self, consumer_key, consumer_secret):
         self._fetcher = OAuth2Fetcher(consumer_key, consumer_secret)

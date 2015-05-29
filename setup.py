@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
         name='discogs-client',
-        version='2.1.0',
+        version='2.2.0',
         description='Official Python API client for Discogs',
         url='https://github.com/discogs/discogs_client',
         author='Discogs',

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
+import sys
 
 from six import with_metaclass
 
@@ -182,7 +183,10 @@ class APIObjectMeta(type):
 
 
 class APIObject(with_metaclass(APIObjectMeta, object)):
-    pass
+    def repr_str(self, string):
+        if sys.version_info < (3,):
+            return string.encode('utf-8')
+        return string
 
 
 class PrimaryAPIObject(APIObject):
@@ -450,7 +454,7 @@ class Artist(PrimaryAPIObject):
         return MixedPaginatedList(self.client, self.fetch('releases_url'), 'releases')
 
     def __repr__(self):
-        return '<Artist {0!r} {1!r}>'.format(self.id, self.name).encode('utf-8')
+        return self.repr_str('<Artist {0!r} {1!r}>'.format(self.id, self.name))
 
 
 class Release(PrimaryAPIObject):
@@ -487,7 +491,7 @@ class Release(PrimaryAPIObject):
             return None
 
     def __repr__(self):
-        return '<Release {0!r} {1!r}>'.format(self.id, self.title).encode('utf-8')
+        return self.repr_str('<Release {0!r} {1!r}>'.format(self.id, self.title))
 
 
 class Master(PrimaryAPIObject):
@@ -508,7 +512,7 @@ class Master(PrimaryAPIObject):
         self.data['resource_url'] = '{0}/masters/{1}'.format(client._base_url, dict_['id'])
 
     def __repr__(self):
-        return '<Master {0!r} {1!r}>'.format(self.id, self.title).encode('utf-8')
+        return self.repr_str('<Master {0!r} {1!r}>'.format(self.id, self.title))
 
 
 class Label(PrimaryAPIObject):
@@ -529,7 +533,7 @@ class Label(PrimaryAPIObject):
         self.data['resource_url'] = '{0}/labels/{1}'.format(client._base_url, dict_['id'])
 
     def __repr__(self):
-        return '<Label {0!r} {1!r}>'.format(self.id, self.name).encode('utf-8')
+        return self.repr_str('<Label {0!r} {1!r}>'.format(self.id, self.name))
 
 
 class User(PrimaryAPIObject):
@@ -564,7 +568,7 @@ class User(PrimaryAPIObject):
         return [CollectionFolder(self.client, d) for d in resp['folders']]
 
     def __repr__(self):
-        return '<User {0!r} {1!r}>'.format(self.id, self.username).encode('utf-8')
+        return self.repr_str('<User {0!r} {1!r}>'.format(self.id, self.username))
 
 
 class WantlistItem(PrimaryAPIObject):
@@ -578,7 +582,7 @@ class WantlistItem(PrimaryAPIObject):
         super(WantlistItem, self).__init__(client, dict_)
 
     def __repr__(self):
-        return '<WantlistItem {0!r} {1!r}>'.format(self.id, self.release.title).encode('utf-8')
+        return self.repr_str('<WantlistItem {0!r} {1!r}>'.format(self.id, self.release.title))
 
 
 # TODO: folder_id should be a Folder object; needs folder_url
@@ -594,7 +598,7 @@ class CollectionItemInstance(PrimaryAPIObject):
         super(CollectionItemInstance, self).__init__(client, dict_)
 
     def __repr__(self):
-        return '<CollectionItemInstance {0!r} {1!r}>'.format(self.id, self.release.title).encode('utf-8')
+        return self.repr_str('<CollectionItemInstance {0!r} {1!r}>'.format(self.id, self.release.title))
 
 
 class CollectionFolder(PrimaryAPIObject):
@@ -611,7 +615,7 @@ class CollectionFolder(PrimaryAPIObject):
         return PaginatedList(self.client, self.fetch('resource_url') + '/releases', 'releases', CollectionItemInstance)
 
     def __repr__(self):
-        return '<CollectionFolder {0!r} {1!r}>'.format(self.id, self.name).encode('utf-8')
+        return self.repr_str('<CollectionFolder {0!r} {1!r}>'.format(self.id, self.name))
 
 
 class Listing(PrimaryAPIObject):
@@ -634,7 +638,7 @@ class Listing(PrimaryAPIObject):
         self.data['resource_url'] = '{0}/marketplace/listings/{1}'.format(client._base_url, dict_['id'])
 
     def __repr__(self):
-        return '<Listing {0!r} {1!r}>'.format(self.id, self.release.data['description']).encode('utf-8')
+        return self.repr_str('<Listing {0!r} {1!r}>'.format(self.id, self.release.data['description']))
 
 
 class Order(PrimaryAPIObject):
@@ -667,7 +671,7 @@ class Order(PrimaryAPIObject):
         self.changes['shipping'] = value
 
     def __repr__(self):
-        return '<Order {0!r}>'.format(self.id).encode('utf-8')
+        return self.repr_str('<Order {0!r}>'.format(self.id))
 
 
 class OrderMessage(SecondaryAPIObject):
@@ -678,7 +682,7 @@ class OrderMessage(SecondaryAPIObject):
     timestamp = SimpleField(transform=parse_timestamp)
 
     def __repr__(self):
-        return '<OrderMessage to:{0!r}>'.format(self.to.username).encode('utf-8')
+        return self.repr_str('<OrderMessage to:{0!r}>'.format(self.to.username))
 
 
 class Track(SecondaryAPIObject):
@@ -689,7 +693,7 @@ class Track(SecondaryAPIObject):
     credits = ListField('Artist', key='extraartists')
 
     def __repr__(self):
-        return '<Track {0!r} {1!r}>'.format(self.position, self.title).encode('utf-8')
+        return self.repr_str('<Track {0!r} {1!r}>'.format(self.position, self.title))
 
 
 class Price(SecondaryAPIObject):
@@ -697,7 +701,7 @@ class Price(SecondaryAPIObject):
     value = SimpleField()
 
     def __repr__(self):
-        return '<Price {0!r} {1!r}>'.format(self.value, self.currency).encode('utf-8')
+        return self.repr_str('<Price {0!r} {1!r}>'.format(self.value, self.currency))
 
 
 class Video(SecondaryAPIObject):
@@ -708,7 +712,7 @@ class Video(SecondaryAPIObject):
     url = SimpleField('uri')
 
     def __repr__(self):
-        return '<Video {0!r}>'.format(self.title).encode('utf-8')
+        return self.repr_str('<Video {0!r}>'.format(self.title))
 
 CLASS_MAP = {
     'artist': Artist,

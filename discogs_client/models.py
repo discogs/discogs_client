@@ -291,6 +291,9 @@ class BasePaginatedResponse(object):
 
     def _load_pagination_info(self):
         data = self.client._get(self._url_for_page(1))
+        self._pages[1] = [
+                self._transform(item) for item in data[self._list_key]
+            ]
         self._num_pages = data['pagination']['pages']
         self._num_items = data['pagination']['items']
 

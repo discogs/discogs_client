@@ -54,8 +54,8 @@ import discogs_client as dc
         'my_user_agent/1.0',
         consumer_key='my_consumer_key',
         consumer_secret='my_consumer_secret',
-        token='my_token',
-        secret='my_token_secret'
+        token=u'my_token',
+        secret=u'my_token_secret'
     )
     ```
 

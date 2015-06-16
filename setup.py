@@ -8,7 +8,8 @@ setup(
         description='Official Python API client for Discogs',
         url='https://github.com/discogs/discogs_client',
         author='Discogs',
-        author_email='info@discogs.com',
+        author_email='api@discogsinc.com',
+        test_suite='discogs_client.tests',
         classifiers=[
             'Development Status :: 5 - Production/Stable',
             'Environment :: Console',

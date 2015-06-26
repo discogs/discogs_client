@@ -1,0 +1,3 @@
+recursive-include discogs_client/tests *.py
+recursive-include discogs_client/tests/res *.json 
+recursive-exclude discogs_client/tests make_symlinks.py

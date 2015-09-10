@@ -141,8 +141,14 @@ class Client(object):
         function are serialized into the request's query string.
         """
         if query:
-            fields['q'] = ' '.join(query)
-
+            unicode_query = []
+            for q in query:
+                try:
+                    unicode_q = q.decode('utf8')
+                except (UnicodeDecodeError, UnicodeEncodeError, AttributeError):
+                    unicode_q = q
+                unicode_query.append(unicode_q)
+            fields['q'] = ' '.join(unicode_query)
         return models.MixedPaginatedList(
             self,
             update_qs(self._base_url + '/database/search', fields),

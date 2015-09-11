@@ -34,6 +34,13 @@ class ModelsTestCase(DiscogsClientTestCase):
         self.assertTrue(isinstance(results[0], Artist))
         self.assertTrue(isinstance(results[1], Release))
 
+    def test_utf8_search(self):
+        uni_string = 'caf\xe9'.encode('utf8')
+        try:
+            results = self.d.search(uni_string)
+        except Exception as e:
+            self.fail('exception {} was raised'.format(e))
+
     def test_fee(self):
         fee = self.d.fee_for(20.5, currency='EUR')
         self.assertEqual(fee.currency, 'USD')

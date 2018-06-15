@@ -21,11 +21,15 @@ class Client(object):
     _authorize_url = 'https://www.discogs.com/oauth/authorize'
     _access_token_url = 'https://api.discogs.com/oauth/access_token'
 
-    def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None, user_token=None):
+    def __init__(
+        self, user_agent, consumer_key=None, consumer_secret=None, token=None,
+        secret=None, user_token=None, headers=None,
+    ):
         """An interface to the Discogs API."""
         self.user_agent = user_agent
         self.verbose = False
         self._fetcher = RequestsFetcher()
+        self.headers = headers or {}
 
         if consumer_key and consumer_secret:
             self.set_consumer_key(consumer_key, consumer_secret)
@@ -103,6 +107,7 @@ class Client(object):
             'Accept-Encoding': 'gzip',
             'User-Agent': self.user_agent,
         }
+        headers.update(self.headers)
 
         if data:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'

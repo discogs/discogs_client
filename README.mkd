@@ -76,6 +76,25 @@ For this, you'll need to generate a user-token from your developer settings on t
 >>> d = discogs_client.Client('ExampleApplication/0.1', user_token="my_user_token")
 ```
 
+### Custom Headers
+
+You can provide headers that will be sent with every request such as an
+`Accept` header detailed
+[here](https://www.discogs.com/developers/#page:home,header:home-versioning-and-media-types).
+
+You can provide these when instantiating the client:
+```python
+>>> import discogs_client
+>>> headers = {'Accept': 'application/vnd.discogs.v2.html+json'}
+>>> d = discogs_client.Client('ExampleApplication/0.1', headers=headers)
+```
+
+Or in between requests on the fly:
+```python
+>>> headers = {'Accept': 'application/vnd.discogs.v2.plaintext+json'}
+>>> d.headers.update(headers)
+```
+
 ### Fetching data
 
 Use methods on the client to fetch objects. You can search for objects:

@@ -1,3 +1,13 @@
+# :warning: DEPRECATED
+
+This repository is no longer maintained. You can still use a REST client like
+[Requests](https://pypi.org/project/requests/) or other third-party Python
+library to access the [Discogs REST API](https://www.discogs.com/developers).
+
+---
+---
+---
+
 # Discogs API Client
 
 This is the official Discogs API client for Python. It enables you to query the Discogs database for information on artists, releases, labels, users, Marketplace listings, and more. It also supports OAuth 1.0a authorization, which allows you to change user data such as profile information, collections and wantlists, inventory, and orders.
